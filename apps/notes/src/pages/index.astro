@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import InkMark from '../components/InkMark.astro';
+import ProjectLinks from '../components/ProjectLinks.astro';
+import GlassIntro from '../components/GlassIntro.astro';
 
 const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
@@ -20,19 +22,22 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
 
     <section aria-label="Projects">
       <h2>Projects</h2>
-      <a class="item" href="https://home.theoazriel.com">
-        <span>Home</span>
-        <span class="muted">A quiet room of sunlight, with leaves moving on the wall.</span>
-      </a>
-      <a class="item" href="https://gallery.theoazriel.com">
-        <span>Gallery</span>
-        <span class="muted">Photographs. Places, mostly quiet ones.</span>
-      </a>
-      <a class="item" href="https://onisolo.theoazriel.com">
-        <span>Onisolo</span>
-        <span class="muted">A monochrome sword game played on a living sheet of ink and paper.</span
-        >
-      </a>
+      <ProjectLinks>
+        <a class="item" href="https://home.theoazriel.com">
+          <span>Home</span>
+          <span class="muted">A quiet room of sunlight, with leaves moving on the wall.</span>
+        </a>
+        <a class="item" href="https://gallery.theoazriel.com">
+          <span>Gallery</span>
+          <span class="muted">Photographs. Places, mostly quiet ones.</span>
+        </a>
+        <a class="item" href="https://onisolo.theoazriel.com">
+          <span>Onisolo</span>
+          <span class="muted"
+            >A monochrome sword game played on a living sheet of ink and paper.</span
+          >
+        </a>
+      </ProjectLinks>
     </section>
 
     <section aria-label="Notes">
@@ -55,4 +60,5 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
       </p>
     </section>
   </main>
+  <GlassIntro />
 </BaseLayout>

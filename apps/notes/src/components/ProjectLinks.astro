@@ -1,0 +1,132 @@
+<project-links>
+  <span class="highlight" aria-hidden="true"></span>
+  <slot />
+</project-links>
+
+<style>
+  project-links {
+    position: relative;
+    display: block;
+    isolation: isolate;
+  }
+
+  .highlight {
+    position: absolute;
+    top: 0;
+    left: -14px;
+    right: -14px;
+    z-index: -1;
+    border-radius: 10px;
+    background: #f4f4f3;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  project-links[data-ready] .highlight {
+    transition:
+      transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      height 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 120ms ease;
+  }
+
+  project-links[data-active] .highlight {
+    opacity: 1;
+  }
+
+  project-links[data-ready] :global(.item:hover) {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    project-links[data-ready] .highlight {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  class ProjectLinks extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      this.cleanup?.();
+      const highlight = this.querySelector<HTMLElement>('.highlight');
+      if (!highlight) return;
+      const listeners = new AbortController();
+      const options = { signal: listeners.signal };
+      let hovered: HTMLElement | null = null;
+      let focused: HTMLElement | null = null;
+      let frame = 0;
+      const findLink = (target: EventTarget | null) => {
+        const link = target instanceof Element ? target.closest<HTMLElement>('.item') : null;
+        return link && this.contains(link) ? link : null;
+      };
+      const update = () => {
+        const active = hovered ?? focused;
+        cancelAnimationFrame(frame);
+        if (!active) {
+          this.removeAttribute('data-active');
+          return;
+        }
+        // Place the first highlight before fading it in. Later moves slide between rows.
+        if (!this.hasAttribute('data-active')) this.removeAttribute('data-ready');
+        const bounds = active.getBoundingClientRect();
+        const parent = this.getBoundingClientRect();
+        highlight.style.transform = `translateY(${bounds.top - parent.top}px)`;
+        highlight.style.height = `${bounds.height}px`;
+        frame = requestAnimationFrame(() => {
+          this.setAttribute('data-ready', '');
+          this.setAttribute('data-active', '');
+        });
+      };
+      this.addEventListener(
+        'pointerover',
+        (event: PointerEvent) => {
+          if (event.pointerType === 'touch') return;
+          hovered = findLink(event.target);
+          update();
+        },
+        options,
+      );
+      this.addEventListener(
+        'pointerleave',
+        () => {
+          hovered = null;
+          update();
+        },
+        options,
+      );
+      this.addEventListener(
+        'focusin',
+        (event) => {
+          focused = findLink(event.target);
+          hovered = null;
+          update();
+        },
+        options,
+      );
+      this.addEventListener(
+        'focusout',
+        (event: FocusEvent) => {
+          focused = findLink(event.relatedTarget);
+          update();
+        },
+        options,
+      );
+      const resize = new ResizeObserver(update);
+      resize.observe(this);
+      this.setAttribute('data-ready', '');
+      this.cleanup = () => {
+        listeners.abort();
+        resize.disconnect();
+        cancelAnimationFrame(frame);
+      };
+    }
+
+    disconnectedCallback() {
+      this.cleanup?.();
+    }
+  }
+
+  if (!customElements.get('project-links')) customElements.define('project-links', ProjectLinks);
+</script>
