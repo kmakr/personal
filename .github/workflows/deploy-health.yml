@@ -1,0 +1,35 @@
+name: Deploy health
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/health/**'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-health.yml'
+      - '.nvmrc'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-health
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:health
+      - run: npm run test:health
+      - run: npm run deploy:health
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

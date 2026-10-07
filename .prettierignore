@@ -5,3 +5,9 @@ dist
 .claude
 package-lock.json
 apps/gallery/src/photos
+
+apps/health/dist-public
+apps/health/.local
+apps/health/artifacts
+apps/health/.env*
+apps/health/.dev.vars*

@@ -8,6 +8,7 @@ apps/
 ├── notes/      # theoazriel.com — the index and the notes (Astro)
 ├── gallery/    # gallery.theoazriel.com — the photographs (React, Vite)
 ├── home/       # home.theoazriel.com — a room of sunlight (one HTML file)
+├── health/     # theoazriel.com/health/ — Fitbit dashboard (React, Vite, Worker)
 └── cms-auth/   # GitHub OAuth relay for the notes editor (Worker script)
 ```
 
@@ -30,6 +31,12 @@ editor. It has no domain of its own; the editor reaches it on its
 `workers.dev` URL. The client id is a plain var in its `wrangler.toml`; the
 secret is stored at Cloudflare with `wrangler secret put`.
 
+**health** is the Fitbit dashboard. The local app handles Google sign-in and
+account setup. The public page uses its own Worker, `theo-health`, and its
+existing Durable Object. It deploys separately from the notes site. See
+[`apps/health/README.md`](apps/health/README.md) for setup and data-sharing rules.
+Credentials and health records must stay out of Git.
+
 ## Run
 
 ```bash
@@ -38,6 +45,7 @@ npm run dev:notes
 npm run dev:gallery
 npm run dev:home
 npm run dev:cms-auth
+npm run dev:health
 ```
 
 ## Check
@@ -48,7 +56,8 @@ npm run check
 
 That runs Prettier, ESLint, `astro check`, the notes and gallery builds, and a
 dry-run deploy of the two Workers that have no build step. The same command
-runs in CI on every pull request. `npm run format` rewrites files to the house
+runs in CI on every pull request. It also builds the public health page, runs
+its tests, and checks its Worker without deploying. `npm run format` rewrites files to the house
 style.
 
 ## Deploy
@@ -62,6 +71,7 @@ npm run deploy:notes
 npm run deploy:gallery
 npm run deploy:home
 npm run deploy:cms-auth
+npm run deploy:health
 ```
 
 ## Publish a note
