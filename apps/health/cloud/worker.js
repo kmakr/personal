@@ -1,7 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { OAuth2Client } from 'google-auth-library';
-import { fetchHealth, addDays, SCOPES } from '../server/health.js';
+import { fetchHealth, SCOPES } from '../server/health.js';
 import { activitySnapshot, readPublicData, hongKongDate, seal, unseal } from './public-data.js';
+import { fetchActivityHistory, mergeActivityHistory } from './activity-history.js';
 const prefix = '/health';
 const json = (data, status = 200) =>
   Response.json(data, {
@@ -121,6 +122,7 @@ export class HealthFeed extends DurableObject {
         ),
       );
       await this.ctx.storage.delete('snapshot');
+      await this.ctx.storage.delete('historyBackfilled');
       await this.ctx.storage.delete('lastError');
       await this.ctx.storage.setAlarm(Date.now() + 1000);
       return json({
@@ -160,39 +162,24 @@ export class HealthFeed extends DurableObject {
       const client = new OAuth2Client(saved.clientId, saved.clientSecret);
       client.setCredentials(saved.tokens);
       const end = today();
-      const recent = await fetchHealth(client, end, 14, ['steps', 'zoneMinutes']);
-      const older = await fetchHealth(client, addDays(end, -14), 14, ['steps', 'zoneMinutes']);
-      const data = {
-        fetchedAt: recent.fetchedAt,
-        days: [...older.days, ...recent.days],
-      };
+      const backfilled = await this.ctx.storage.get('historyBackfilled');
+      const batches = await fetchActivityHistory(client, end, backfilled, fetchHealth);
       await this.ctx.blockConcurrencyWhile(async () => {
         if (epoch !== this.epoch) return;
         saved.tokens = { ...saved.tokens, ...client.credentials };
         await this.ctx.storage.put('credentials', await seal(saved, this.env.DATA_KEY));
-        if (recent.warnings.length === 2 && older.warnings.length === 2) {
+        if (batches.every((batch) => batch.warnings.length === 2)) {
           await this.ctx.storage.put(
             'lastError',
             'The last update failed. Previously loaded values remain visible.',
           );
           return;
         }
-        // Keep up to 90 days already fetched. Failed measurements retain their prior records.
         const previous = await this.ctx.storage.get('snapshot');
-        const merged = new Map((previous?.days || []).map((r) => [r.date, r]));
-        for (const row of data.days) {
-          const old = merged.get(row.date);
-          if (old)
-            for (const w of row.date <= addDays(end, -14) ? older.warnings : recent.warnings) {
-              if (w.metric === 'sleep') {
-                row.sleep = old.sleep;
-                row.sleepMinutes = old.sleepMinutes;
-              } else row[w.metric] = old[w.metric];
-            }
-          merged.set(row.date, row);
+        await this.ctx.storage.put('snapshot', mergeActivityHistory(previous, batches, end));
+        if (batches.every((batch) => batch.warnings.length === 0)) {
+          await this.ctx.storage.put('historyBackfilled', true);
         }
-        data.days = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-90);
-        await this.ctx.storage.put('snapshot', activitySnapshot(data));
         await this.ctx.storage.delete('lastError');
       });
     } catch {
