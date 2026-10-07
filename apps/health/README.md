@@ -72,7 +72,7 @@ The public build runs at `https://theoazriel.com/health/` in a separate Cloudfla
 2. Click **Publish my health data** on the local dashboard.
 3. The local server sends the OAuth client and refresh token directly to the owner-only cloud endpoint over HTTPS. They are never sent to visitors or browser storage.
 4. The cloud service encrypts credentials with AES-GCM. Its encryption key and owner access key are Cloudflare secrets. Private state is stored in a Durable Object.
-5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. Each sync reads only steps and active zone minutes for the last 28 days in two 14-day requests. The service retains up to 90 days of activity records as they accumulate. Sleep and health measurements are not fetched or stored by the cloud sync.
+5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. The first sync requests 98 days of steps and active zone minutes in 14-day windows. A failed history request is retried on the next sync. Later syncs refresh the last 28 days. The service retains 98 days, which covers the 12 public weeks and the sharing delay. Sleep and health measurements are not fetched or stored by the cloud sync.
 6. The public response contains only the sharing policy and 12 calendar weeks of activity totals. Weeks run from Monday through Sunday, using Hong Kong time. Each week becomes eligible at midnight on the second Monday after its start. Each metric needs seven recorded daily values; otherwise its total is null. Visitors cannot change the date range or request daily data. No exact sync timestamps, sleep records, medical measurements, account details, or credentials appear in this response. Missing data stays empty; the public build never substitutes sample values.
 7. Click **Remove public data** in the local dashboard to remove the cloud connection and its records. Local Google sign-in is separate. **Disconnect account** revokes local Google access; that can also stop future cloud syncs, but does not remove already published records.
 
@@ -130,3 +130,7 @@ needs Worker upload and deployment permissions only. A full manual
 `theoazriel.com` zone. Keep any route access limited to that zone. Initial
 route setup or a future Durable Object migration may require a full manual
 deployment before automated version deployments resume.
+
+### Public activity view
+
+The page shows a weekly step mosaic, step milestones, an average calculated from the weekly total, and an interactive week chart. Comparisons use the immediately preceding calendar week only when both totals exist. Best-week and cumulative totals use only the complete weeks in the current view. These displays use the same public weekly totals; they do not expose daily records. Missing totals remain missing, including days Google does not report as zero.
