@@ -105,8 +105,9 @@ commit its contents. Cloud credentials remain in the existing Cloudflare
 Worker; moving the source does not require changing its secrets.
 
 The health deployment workflow uses the repository's `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` secrets. The token must permit deployments of
-`theo-health` and its route. The Worker name, route, Durable Object binding, and
+`CLOUDFLARE_ACCOUNT_ID` secrets. The token must permit version uploads and deployments of
+`theo-health`. Automatic deployments keep the existing route and do not need
+permission to edit it. The Worker name, route, Durable Object binding, and
 migration tag are unchanged. Do not rename them during a source-only move.
 
 ## Public privacy policy
@@ -122,7 +123,10 @@ migration tag are unchanged. Do not rename them during a source-only move.
   starts. The local owner dashboard can still show all authorized measurements.
 - An incomplete week displays a dash, never a partial total or sample value.
 
-The GitHub deployment token needs `Workers Scripts: Edit` for the account and
-`Workers Routes: Edit` for the `theoazriel.com` zone. Keep route access limited
-to that zone. Updating the existing token permissions does not require copying
-or replacing the GitHub secret.
+Automatic deployment uses `wrangler versions upload` and deploys that exact
+version tag at 100 percent traffic. It keeps the existing `/health/` route and
+needs Worker upload and deployment permissions only. A full manual
+`npm run deploy:health` also needs `Workers Routes: Edit` for the
+`theoazriel.com` zone. Keep any route access limited to that zone. Initial
+route setup or a future Durable Object migration may require a full manual
+deployment before automated version deployments resume.
