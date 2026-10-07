@@ -550,7 +550,10 @@ export default function App() {
               </span>
               <div>
                 <b>Share on theoazriel.com</b>
-                <p>Publish all dashboard measurements and sleep stages. Everyone can view them.</p>
+                <p>
+                  Publish weekly steps and active zone minutes, with a seven-day delay. Sleep and
+                  health measurements stay private.
+                </p>
               </div>
               <button className="primary" disabled={!status?.connected || busy} onClick={publish}>
                 Publish my health data

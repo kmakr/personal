@@ -35,6 +35,8 @@ secret is stored at Cloudflare with `wrangler secret put`.
 account setup. The public page uses its own Worker, `theo-health`, and its
 existing Durable Object. It deploys separately from the notes site. See
 [`apps/health/README.md`](apps/health/README.md) for setup and data-sharing rules.
+The public page shows weekly steps and active zone minutes after a seven-day
+delay. Daily records, sleep, and health measurements stay private.
 Credentials and health records must stay out of Git.
 
 ## Run

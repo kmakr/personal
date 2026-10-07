@@ -101,3 +101,24 @@ test('reads all pages, uses closed-open dates and isolates API failures', async 
   assert.ok(calls.find((r) => r.params?.pageToken === 'page2'));
   assert.ok(SCOPES.every((s) => s.endsWith('.readonly')));
 });
+
+test('cloud activity fetch never requests sleep or medical measurements', async () => {
+  const requests = [];
+  await fetchHealth(
+    {
+      request: async (input) => {
+        requests.push(input.url);
+        return { data: { rollupDataPoints: [] } };
+      },
+    },
+    '2026-10-07',
+    14,
+    ['steps', 'zoneMinutes'],
+  );
+  assert.equal(requests.length, 2);
+  assert.ok(
+    requests.every((url) =>
+      /dataTypes\/(steps|active-zone-minutes)\/dataPoints:dailyRollUp$/.test(url),
+    ),
+  );
+});

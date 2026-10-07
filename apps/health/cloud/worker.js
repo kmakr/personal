@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { OAuth2Client } from 'google-auth-library';
-import { fetchHealth, normalize, validDate, addDays, SCOPES } from '../server/health.js';
-import { publicData, seal, unseal } from './public-data.js';
+import { fetchHealth, addDays, SCOPES } from '../server/health.js';
+import { activitySnapshot, readPublicData, hongKongDate, seal, unseal } from './public-data.js';
 const prefix = '/health';
 const json = (data, status = 200) =>
   Response.json(data, {
@@ -11,13 +11,7 @@ const json = (data, status = 200) =>
       'X-Content-Type-Options': 'nosniff',
     },
   });
-const today = () =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Hong_Kong',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+const today = hongKongDate;
 async function owner(request, env) {
   if (!env.OWNER_KEY) return false;
   const given = request.headers.get('Authorization') || '';
@@ -79,6 +73,10 @@ export class HealthFeed extends DurableObject {
     super(ctx, env);
     this.syncing = null;
     this.epoch = 0;
+    this.ctx.blockConcurrencyWhile(async () => {
+      const snapshot = await this.ctx.storage.get('snapshot');
+      if (snapshot) await this.ctx.storage.put('snapshot', activitySnapshot(snapshot));
+    });
   }
   async fetch(request) {
     const path = new URL(request.url).pathname;
@@ -141,29 +139,8 @@ export class HealthFeed extends DurableObject {
       return json({ synced: true });
     }
     if (url.pathname === '/data') {
-      const days = Number(url.searchParams.get('days') || 7),
-        end = url.searchParams.get('end') || today();
-      if (![7, 14].includes(days) || !validDate(end))
-        return json({ error: 'Invalid date range.' }, 400);
-      const snapshot = await this.ctx.storage.get('snapshot');
-      if (!snapshot)
-        return json(
-          {
-            error:
-              'Theo’s health data is not connected yet. No sample data is shown on this public page.',
-          },
-          503,
-        );
-      const start = addDays(end, 1 - days),
-        records = new Map(snapshot.days.map((r) => [r.date, r]));
-      const rows = normalize({}, start, days).map((row) => records.get(row.date) || row);
-      const lastError = await this.ctx.storage.get('lastError');
-      return json({
-        ...snapshot,
-        days: rows,
-        stale: Date.now() - Date.parse(snapshot.fetchedAt) > 2 * 3600000,
-        updateMessage: lastError || null,
-      });
+      // User-supplied ranges never select daily or more recent records.
+      return json(await readPublicData(this.ctx.storage));
     }
     return json({ error: 'Not found.' }, 404);
   }
@@ -182,12 +159,18 @@ export class HealthFeed extends DurableObject {
       const saved = await unseal(sealed, this.env.DATA_KEY);
       const client = new OAuth2Client(saved.clientId, saved.clientSecret);
       client.setCredentials(saved.tokens);
-      const data = await fetchHealth(client, today(), 14);
+      const end = today();
+      const recent = await fetchHealth(client, end, 14, ['steps', 'zoneMinutes']);
+      const older = await fetchHealth(client, addDays(end, -14), 14, ['steps', 'zoneMinutes']);
+      const data = {
+        fetchedAt: recent.fetchedAt,
+        days: [...older.days, ...recent.days],
+      };
       await this.ctx.blockConcurrencyWhile(async () => {
         if (epoch !== this.epoch) return;
         saved.tokens = { ...saved.tokens, ...client.credentials };
         await this.ctx.storage.put('credentials', await seal(saved, this.env.DATA_KEY));
-        if (data.warnings.length === 7) {
+        if (recent.warnings.length === 2 && older.warnings.length === 2) {
           await this.ctx.storage.put(
             'lastError',
             'The last update failed. Previously loaded values remain visible.',
@@ -200,7 +183,7 @@ export class HealthFeed extends DurableObject {
         for (const row of data.days) {
           const old = merged.get(row.date);
           if (old)
-            for (const w of data.warnings) {
+            for (const w of row.date <= addDays(end, -14) ? older.warnings : recent.warnings) {
               if (w.metric === 'sleep') {
                 row.sleep = old.sleep;
                 row.sleepMinutes = old.sleepMinutes;
@@ -209,7 +192,7 @@ export class HealthFeed extends DurableObject {
           merged.set(row.date, row);
         }
         data.days = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-90);
-        await this.ctx.storage.put('snapshot', publicData(data));
+        await this.ctx.storage.put('snapshot', activitySnapshot(data));
         await this.ctx.storage.delete('lastError');
       });
     } catch {
