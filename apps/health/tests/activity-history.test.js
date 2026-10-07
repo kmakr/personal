@@ -16,7 +16,7 @@ test('initial history covers 98 days in bounded approved-measurement requests; l
     assert.deepEqual(calls[0], {
       end: '2026-10-07',
       days: 14,
-      metrics: ['steps', 'zoneMinutes', 'oxygen'],
+      metrics: ['steps', 'zoneMinutes'],
     });
     assert.equal(calls.at(-1).end, backfilled ? '2026-09-23' : '2026-07-15');
   }
@@ -44,8 +44,8 @@ test('merge preserves failed measurements, strips unapproved medical data, and r
     '2026-10-07',
   );
   assert.deepEqual(result.days, [
-    { date: '2026-07-02', steps: 20, zoneMinutes: null, oxygen: null },
-    { date: '2026-10-06', steps: 200, zoneMinutes: 8, oxygen: 97.5 },
-    { date: '2026-10-07', steps: 0, zoneMinutes: null, oxygen: null },
+    { date: '2026-07-02', steps: 20, zoneMinutes: null },
+    { date: '2026-10-06', steps: 200, zoneMinutes: 8 },
+    { date: '2026-10-07', steps: 0, zoneMinutes: null },
   ]);
 });

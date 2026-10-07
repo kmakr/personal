@@ -1,8 +1,8 @@
 import { addDays, validDate } from '../server/health.js';
 
 export const PUBLIC_POLICY = {
-  version: 3,
-  metrics: ['steps', 'zoneMinutes', 'oxygen'],
+  version: 4,
+  metrics: ['steps', 'zoneMinutes'],
   aggregation: 'daily-and-calendar-week',
   weekStartsOn: 'Monday',
   delayDays: 7,
@@ -18,7 +18,7 @@ export function hongKongDate(now = new Date()) {
     day: '2-digit',
   }).format(now);
 }
-// Retain only the three measurements approved for public sharing.
+// Retain only the activity measurements approved for public sharing.
 export function sharedSnapshot(data) {
   return {
     fetchedAt: data.fetchedAt,
@@ -28,7 +28,6 @@ export function sharedSnapshot(data) {
         date: row.date,
         steps: numeric(row.steps),
         zoneMinutes: numeric(row.zoneMinutes),
-        oxygen: numeric(row.oxygen) !== null && row.oxygen <= 100 ? row.oxygen : null,
       })),
   };
 }
@@ -60,7 +59,7 @@ export function publicData(data, now = new Date()) {
   const dayEndExclusive = addDays(date, -PUBLIC_POLICY.delayDays);
   const days = Array.from({ length: 84 }, (_, index) => {
     const day = addDays(dayEndExclusive, index - 84);
-    return records.get(day) || { date: day, steps: null, zoneMinutes: null, oxygen: null };
+    return records.get(day) || { date: day, steps: null, zoneMinutes: null };
   });
   return { mode: 'live', policy: PUBLIC_POLICY, weeks, days };
 }
