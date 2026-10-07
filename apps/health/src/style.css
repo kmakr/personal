@@ -998,207 +998,428 @@ dialog::backdrop {
   }
 }
 
-.activity-intro {
+/* Daily garden: homepage ink, with botanical green and oxygen blue as data keys. */
+.garden-page {
+  --garden-green: #547764;
+  --garden-soft: #eff3ee;
+  --oxygen-blue: #557ea5;
+}
+.garden-intro {
   color: var(--muted);
-  max-width: 32rem;
-  margin: 1.5rem 0 3rem;
+  max-width: 31rem;
+  margin: 1.5rem 0 2.5rem;
 }
-.movement-story {
-  border-top: 1px solid var(--rule);
-}
-.story-date {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.75rem;
-  padding-top: 1rem;
-}
-.story-date span:last-child {
-  color: var(--muted);
-}
-.movement-hero {
-  display: grid;
-  grid-template-columns: 1fr 170px;
-  align-items: center;
-  gap: 2rem;
-  padding: 2.5rem 0;
-}
-.movement-number strong {
-  display: block;
-  font-size: clamp(3rem, 9vw, 5rem);
-  font-weight: 450;
-  letter-spacing: -0.065em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.movement-number > span {
-  display: block;
-  margin-top: 0.7rem;
-}
-.week-change {
+.garden-heading,
+.garden-toolbar,
+.garden-paging,
+.garden-heading h2,
+.garden-replay {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-top: 1rem;
 }
-.movement-number .record-label {
-  font-size: 0.75rem;
-}
-.step-art {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
-  transform: rotate(-5deg);
-}
-.step-art i {
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: #ececea;
-  transition: background 0.3s;
-}
-.step-art i.filled {
-  background: #252525;
-}
-.milestone-line {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.75rem;
-  padding: 1rem 0;
-  border-top: 1px solid var(--rule);
-}
-.milestone-line span:last-child {
-  color: var(--muted);
-}
-.movement-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  padding: 1.5rem 0;
-  margin: 0;
-  border-bottom: 1px solid var(--rule);
-}
-.movement-details dt {
-  font-size: 0.8125rem;
-}
-.movement-details dd {
-  margin: 0.5rem 0;
-  font-size: 1.8rem;
-  letter-spacing: -0.04em;
-}
-.movement-details small {
-  font-size: 0.875rem;
-  letter-spacing: 0;
-  color: var(--muted);
-}
-.movement-details p {
-  color: var(--muted);
-  font-size: 0.7rem;
-  margin: 0;
-}
-.activity-archive {
-  margin-top: 3.5rem;
-}
-.archive-heading {
-  display: flex;
-  align-items: baseline;
+.garden-heading {
   justify-content: space-between;
   gap: 1rem;
 }
-.archive-heading h2 {
-  margin: 0;
-}
-.archive-heading > span {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-.weekly-bars {
-  display: grid;
-  grid-template-columns: repeat(var(--weeks), minmax(42px, 1fr));
+.garden-heading h2 {
   gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.5rem 2px;
 }
-.weekly-bars button {
+.garden-heading h2 svg {
+  color: var(--garden-green);
+}
+.garden-replay {
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.5rem 0 0.5rem 0.5rem;
+}
+.garden-replay:hover {
+  color: var(--garden-green);
+}
+.garden-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+.garden-ranges {
+  display: flex;
+  gap: 0.2rem;
+  background: #f3f3f1;
+  border-radius: 20px;
+  padding: 3px;
+}
+.garden-ranges button {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  border-radius: 18px;
+}
+.garden-ranges button[aria-pressed='true'] {
+  background: #fff;
+  box-shadow: 0 1px 3px #00000014;
+}
+.garden-paging {
+  gap: 0.4rem;
+  font-size: 0.7rem;
+}
+.garden-paging button {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+}
+.garden-bed {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  align-items: end;
+  margin: 1.5rem 0 1rem;
+  gap: 2px;
+}
+.garden-bed.seven-days {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.garden-day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.7rem;
   min-width: 0;
-  padding: 0.6rem 0.2rem;
-  border-radius: 4px;
+  padding: 0.4rem 0 0.6rem;
+  border-radius: 28px 28px 8px 8px;
+  transition: background 0.15s;
 }
-.weekly-bars button:hover:not(:disabled),
-.weekly-bars button.chosen {
-  background: #f5f5f3;
+.garden-day:hover {
+  background: #f6f7f4;
+  color: #141414;
 }
-.weekly-bars button:focus-visible {
-  outline: 2px solid #141414;
-  outline-offset: -2px;
+.garden-day.selected {
+  background: var(--garden-soft);
 }
-.weekly-bars button:disabled {
-  opacity: 1;
-  cursor: default;
+.garden-day:focus-visible {
+  outline: 2px solid var(--garden-green);
+  outline-offset: 1px;
 }
-.activity-week-value,
-.activity-week-date {
-  font-size: 0.65rem;
-  white-space: nowrap;
+.garden-plant {
+  width: 100%;
+  height: 155px;
+  overflow: visible;
 }
-.activity-week-date {
+.plant-ground {
+  stroke: #c5cbbf;
+  fill: none;
+  stroke-width: 1;
+}
+.plant-stem {
+  fill: none;
+  stroke: var(--garden-green);
+  stroke-width: 1.5;
+}
+.plant-stem.unrecorded {
+  stroke: #b4b9b1;
+  stroke-dasharray: 2 3;
+}
+.plant-leaf {
+  fill: var(--garden-green);
+  fill-opacity: 0.75;
+}
+.plant-flower ellipse {
+  fill: var(--garden-green);
+}
+.plant-flower circle {
+  fill: #fff;
+}
+.plant-zero,
+.plant-missing {
+  fill: #fff;
+  stroke: #a9b2a5;
+  stroke-width: 1;
+}
+.plant-growth {
+  transform-origin: 24px 134px;
+  animation: garden-grow 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--grow-delay);
+}
+@keyframes garden-grow {
+  from {
+    transform: scaleY(0.05);
+    opacity: 0.3;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.garden-day-number {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.garden-day-name {
+  font-size: 0.6rem;
   color: var(--muted);
 }
-.activity-week-space {
+.garden-key {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  height: 135px;
-  width: 100%;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.7rem;
 }
-.activity-bar {
-  width: 65%;
-  max-width: 72px;
-  background: #b6b6b1;
-  border-radius: 3px 3px 0 0;
-  transition: height 0.25s;
+.garden-key > span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.chosen .activity-bar {
-  background: #252525;
+.key-stem {
+  height: 13px;
+  width: 2px;
+  background: var(--garden-green);
 }
-.empty-bar {
-  width: 65%;
-  max-width: 72px;
-  border-top: 1px dashed #aaa;
+.key-leaf {
+  width: 10px;
+  height: 6px;
+  border-radius: 9px 0 9px 0;
+  background: var(--garden-green);
+  transform: rotate(-30deg);
 }
-.chart-help {
+.garden-help {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.7rem;
+}
+.selected-day-panel {
+  margin-top: 1.5rem;
+  background: #f6f7f4;
+  padding: 1.2rem 1.3rem;
+  border-radius: 10px;
+}
+.selected-day-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.75rem;
+}
+.selected-day-heading strong {
+  font-weight: 500;
+}
+.selected-day-heading > span {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+.daily-values {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 1rem;
+  margin: 1.2rem 0 0;
+}
+.daily-values dt {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+.daily-values dd {
+  margin: 0.35rem 0 0;
+  font-size: 1.7rem;
+  font-weight: 450;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.daily-values small {
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.garden-summary {
+  margin-top: 3rem;
+}
+.garden-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1.3rem;
+}
+.fact-value {
+  font-size: 2.4rem;
+  letter-spacing: -0.05em;
+  line-height: 1.2;
+}
+.fact-value small {
+  font-size: 0.85rem;
+  letter-spacing: 0;
+}
+.garden-facts h3 {
+  font-size: 0.8rem;
+  font-weight: 400;
+  margin-top: 0.4rem;
+}
+.garden-facts p {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+.garden-highlight {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  margin-top: 1.7rem;
+}
+.garden-highlight svg {
+  color: var(--garden-green);
+}
+.garden-highlight strong {
+  font-weight: 500;
+}
+.oxygen-section {
+  margin-top: 3rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+}
+.oxygen-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.oxygen-heading p {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.oxygen-symbol {
+  font-size: 2rem;
+  letter-spacing: -0.05em;
+  color: var(--oxygen-blue);
+}
+.oxygen-chart {
+  width: 100%;
+  height: auto;
+  margin-top: 1rem;
+  overflow: visible;
+}
+.oxygen-chart line {
+  stroke: #e4e4e4;
+  stroke-width: 1;
+}
+.oxygen-chart text {
+  fill: #6f6f6f;
+  font-size: 9px;
+}
+.oxygen-chart .oxygen-trace {
+  stroke: var(--oxygen-blue);
+  stroke-width: 1.6;
+}
+.oxygen-point {
+  fill: var(--oxygen-blue);
+  stroke: #fff;
+  stroke-width: 1;
+}
+.oxygen-point.selected {
+  fill: #141414;
+}
+.oxygen-reading-list {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.6rem 2px;
+}
+.oxygen-reading-list button {
+  flex-shrink: 0;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  text-align: left;
+}
+.oxygen-reading-list button[aria-pressed='true'] {
+  background: #edf2f7;
+}
+.oxygen-reading-list span {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+.oxygen-reading-list strong {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.oxygen-note {
+  font-size: 0.7rem;
   color: var(--muted);
   margin-top: 1rem;
 }
-.archive-total {
+.oxygen-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.oxygen-empty {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  border-top: 1px solid var(--rule);
-  margin-top: 2rem;
-  padding-top: 1.5rem;
+  padding: 2rem 0 1rem;
 }
-.archive-total strong {
-  font-size: 2rem;
-  font-weight: 400;
-  letter-spacing: -0.05em;
+.oxygen-empty > span {
+  color: #a7b7c7;
+  font-size: 3rem;
+  border: 1px dashed #cbd4dd;
+  border-radius: 50%;
+  width: 85px;
+  height: 85px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
-.archive-total p {
+.oxygen-empty h3 {
   font-size: 0.8rem;
-  margin: 0;
 }
-.archive-total span {
+.oxygen-empty p {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+  max-width: 23rem;
+}
+.daily-records {
+  border-block: 1px solid var(--rule);
+  padding: 1.2rem 0;
+  margin-top: 2.5rem;
+}
+.daily-records summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.daily-records summary span {
+  float: right;
+  font-size: 0.75rem;
   color: var(--muted);
 }
+.daily-table-wrap {
+  overflow-x: auto;
+}
+.daily-records table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  margin-top: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.daily-records caption {
+  text-align: left;
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding-bottom: 0.8rem;
+}
+.daily-records th,
+.daily-records td {
+  padding: 0.55rem 0.2rem;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+.daily-records th {
+  font-weight: 500;
+}
+.daily-records th:first-child {
+  text-align: left;
+}
 .public-footer {
-  margin-top: 3.5rem;
+  margin-top: 2.5rem;
   color: var(--muted);
   font-size: 0.75rem;
 }
@@ -1210,36 +1431,59 @@ dialog::backdrop {
   margin-top: 1.5rem;
 }
 @media (max-width: 480px) {
-  .movement-hero {
-    grid-template-columns: 1fr 100px;
-    gap: 1rem;
+  .garden-bed {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    row-gap: 0.6rem;
   }
-  .step-art {
-    gap: 4px;
+  .garden-plant {
+    height: 130px;
   }
-  .movement-number strong {
-    font-size: 3rem;
+  .garden-toolbar {
+    align-items: flex-start;
   }
-  .story-date,
-  .milestone-line {
+  .garden-paging {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .selected-day-panel {
+    padding: 1rem;
+  }
+  .selected-day-heading {
     flex-direction: column;
-    gap: 0.3rem;
   }
-  .movement-details {
+  .daily-values {
+    gap: 0.6rem;
+    grid-template-columns: 1fr 1.2fr 1fr;
+  }
+  .daily-values dt {
+    min-height: 2.2rem;
+    align-items: start;
+  }
+  .daily-values dt svg {
+    display: none;
+  }
+  .daily-values dd {
+    font-size: 1.4rem;
+  }
+  .garden-facts {
     gap: 1rem;
   }
-  .movement-details p {
-    max-width: 9rem;
+  .fact-value {
+    font-size: 2rem;
   }
-  .archive-heading {
-    align-items: start;
+  .garden-key {
+    gap: 0.6rem;
+    flex-direction: column;
   }
   .public-health .sync span {
     display: none;
   }
-  .archive-total {
-    align-items: start;
-    flex-direction: column;
-    gap: 0.5rem;
+  .oxygen-empty {
+    gap: 1rem;
+  }
+  .oxygen-empty > span {
+    width: 65px;
+    height: 65px;
+    font-size: 2.5rem;
   }
 }

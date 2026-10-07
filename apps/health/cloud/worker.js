@@ -1,7 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
 import { OAuth2Client } from 'google-auth-library';
 import { fetchHealth, SCOPES } from '../server/health.js';
-import { activitySnapshot, readPublicData, hongKongDate, seal, unseal } from './public-data.js';
+import {
+  PUBLIC_POLICY,
+  sharedSnapshot,
+  readPublicData,
+  hongKongDate,
+  seal,
+  unseal,
+} from './public-data.js';
 import { fetchActivityHistory, mergeActivityHistory } from './activity-history.js';
 const prefix = '/health';
 const json = (data, status = 200) =>
@@ -76,7 +83,7 @@ export class HealthFeed extends DurableObject {
     this.epoch = 0;
     this.ctx.blockConcurrencyWhile(async () => {
       const snapshot = await this.ctx.storage.get('snapshot');
-      if (snapshot) await this.ctx.storage.put('snapshot', activitySnapshot(snapshot));
+      if (snapshot) await this.ctx.storage.put('snapshot', sharedSnapshot(snapshot));
     });
   }
   async fetch(request) {
@@ -124,6 +131,7 @@ export class HealthFeed extends DurableObject {
       await this.ctx.storage.delete('snapshot');
       await this.ctx.storage.delete('historyBackfilled');
       await this.ctx.storage.delete('lastError');
+      await this.ctx.storage.delete('syncWarnings');
       await this.ctx.storage.setAlarm(Date.now() + 1000);
       return json({
         connected: true,
@@ -138,10 +146,24 @@ export class HealthFeed extends DurableObject {
     }
     if (url.pathname === '/sync' && request.method === 'POST') {
       await this.sync();
-      return json({ synced: true });
+      const error = await this.ctx.storage.get('lastError');
+      const snapshot = await this.ctx.storage.get('snapshot');
+      return json({
+        synced: !error,
+        warnings: (await this.ctx.storage.get('syncWarnings')) || [],
+        historyBackfilled:
+          (await this.ctx.storage.get('historyBackfilled')) === PUBLIC_POLICY.version,
+        ...(error ? { error } : {}),
+        recordedDays: Object.fromEntries(
+          PUBLIC_POLICY.metrics.map((metric) => [
+            metric,
+            (snapshot?.days || []).filter((row) => row[metric] != null).length,
+          ]),
+        ),
+      });
     }
     if (url.pathname === '/data') {
-      // User-supplied ranges never select daily or more recent records.
+      // User-supplied ranges cannot bypass the sharing delay or field allowlist.
       return json(await readPublicData(this.ctx.storage));
     }
     return json({ error: 'Not found.' }, 404);
@@ -162,13 +184,25 @@ export class HealthFeed extends DurableObject {
       const client = new OAuth2Client(saved.clientId, saved.clientSecret);
       client.setCredentials(saved.tokens);
       const end = today();
-      const backfilled = await this.ctx.storage.get('historyBackfilled');
+      const backfilled =
+        (await this.ctx.storage.get('historyBackfilled')) === PUBLIC_POLICY.version;
       const batches = await fetchActivityHistory(client, end, backfilled, fetchHealth);
       await this.ctx.blockConcurrencyWhile(async () => {
         if (epoch !== this.epoch) return;
         saved.tokens = { ...saved.tokens, ...client.credentials };
         await this.ctx.storage.put('credentials', await seal(saved, this.env.DATA_KEY));
-        if (batches.every((batch) => batch.warnings.length === 2)) {
+        const warnings = [
+          ...new Map(
+            batches
+              .flatMap((batch) => batch.warnings)
+              .map((warning) => [
+                `${warning.metric}:${warning.status}`,
+                { metric: warning.metric, status: warning.status },
+              ]),
+          ).values(),
+        ];
+        await this.ctx.storage.put('syncWarnings', warnings);
+        if (batches.every((batch) => batch.warnings.length === PUBLIC_POLICY.metrics.length)) {
           await this.ctx.storage.put(
             'lastError',
             'The last update failed. Previously loaded values remain visible.',
@@ -178,7 +212,7 @@ export class HealthFeed extends DurableObject {
         const previous = await this.ctx.storage.get('snapshot');
         await this.ctx.storage.put('snapshot', mergeActivityHistory(previous, batches, end));
         if (batches.every((batch) => batch.warnings.length === 0)) {
-          await this.ctx.storage.put('historyBackfilled', true);
+          await this.ctx.storage.put('historyBackfilled', PUBLIC_POLICY.version);
         }
         await this.ctx.storage.delete('lastError');
       });

@@ -1,9 +1,9 @@
 import { addDays, validDate } from '../server/health.js';
 
 export const PUBLIC_POLICY = {
-  version: 2,
-  metrics: ['steps', 'zoneMinutes'],
-  aggregation: 'calendar-week',
+  version: 3,
+  metrics: ['steps', 'zoneMinutes', 'oxygen'],
+  aggregation: 'daily-and-calendar-week',
   weekStartsOn: 'Monday',
   delayDays: 7,
   timeZone: 'Asia/Hong_Kong',
@@ -18,8 +18,8 @@ export function hongKongDate(now = new Date()) {
     day: '2-digit',
   }).format(now);
 }
-// Private cloud storage needs only activity. Strip old medical data during migration.
-export function activitySnapshot(data) {
+// Retain only the three measurements approved for public sharing.
+export function sharedSnapshot(data) {
   return {
     fetchedAt: data.fetchedAt,
     days: (data.days || [])
@@ -28,6 +28,7 @@ export function activitySnapshot(data) {
         date: row.date,
         steps: numeric(row.steps),
         zoneMinutes: numeric(row.zoneMinutes),
+        oxygen: numeric(row.oxygen) !== null && row.oxygen <= 100 ? row.oxygen : null,
       })),
   };
 }
@@ -37,14 +38,14 @@ export function publicData(data, now = new Date()) {
   const monday = addDays(date, -((dayOfWeek + 6) % 7));
   // Last eligible Sunday ends at midnight seven full days before this Monday.
   const lastEndExclusive = addDays(monday, -7);
-  const records = new Map(activitySnapshot(data).days.map((row) => [row.date, row]));
+  const records = new Map(sharedSnapshot(data).days.map((row) => [row.date, row]));
   const weeks = Array.from({ length: 12 }, (_, index) => {
     const start = addDays(lastEndExclusive, (index - 12) * 7);
     const rows = Array.from({ length: 7 }, (_, offset) => records.get(addDays(start, offset)));
     const totals = Object.fromEntries(
-      PUBLIC_POLICY.metrics.map((metric) => {
+      ['steps', 'zoneMinutes'].map((metric) => {
         const values = rows.map((row) => numeric(row?.[metric]));
-        // Partial sums would let visitors infer individual days. Publish complete totals only.
+        // Weekly totals remain complete; daily records can be shown independently.
         return [
           metric,
           values.every((value) => value !== null)
@@ -55,7 +56,13 @@ export function publicData(data, now = new Date()) {
     );
     return { start, end: addDays(start, 6), ...totals };
   });
-  return { mode: 'live', policy: PUBLIC_POLICY, weeks };
+  // A day must end, then wait seven full days. At Oct 7 midnight, Sep 29 is eligible.
+  const dayEndExclusive = addDays(date, -PUBLIC_POLICY.delayDays);
+  const days = Array.from({ length: 84 }, (_, index) => {
+    const day = addDays(dayEndExclusive, index - 84);
+    return records.get(day) || { date: day, steps: null, zoneMinutes: null, oxygen: null };
+  });
+  return { mode: 'live', policy: PUBLIC_POLICY, weeks, days };
 }
 export async function readPublicData(storage, now = new Date()) {
   const snapshot = await storage.get('snapshot');

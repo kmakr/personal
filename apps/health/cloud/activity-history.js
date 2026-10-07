@@ -1,21 +1,21 @@
 import { addDays } from '../server/health.js';
-import { activitySnapshot } from './public-data.js';
+import { sharedSnapshot, PUBLIC_POLICY } from './public-data.js';
 
 export const HISTORY_DAYS = 98;
 export async function fetchActivityHistory(client, end, backfilled, fetchHealth) {
   const batches = [];
   for (let offset = 0; offset < (backfilled ? 28 : HISTORY_DAYS); offset += 14) {
-    batches.push(await fetchHealth(client, addDays(end, -offset), 14, ['steps', 'zoneMinutes']));
+    batches.push(await fetchHealth(client, addDays(end, -offset), 14, PUBLIC_POLICY.metrics));
   }
   return batches;
 }
 export function mergeActivityHistory(previous, batches, end) {
-  const merged = new Map(activitySnapshot(previous || {}).days.map((row) => [row.date, row]));
+  const merged = new Map(sharedSnapshot(previous || {}).days.map((row) => [row.date, row]));
   for (const batch of batches) {
-    for (const row of activitySnapshot(batch).days) {
+    for (const row of sharedSnapshot(batch).days) {
       const old = merged.get(row.date);
       for (const warning of batch.warnings) {
-        if (['steps', 'zoneMinutes'].includes(warning.metric)) {
+        if (PUBLIC_POLICY.metrics.includes(warning.metric)) {
           row[warning.metric] = old?.[warning.metric] ?? null;
         }
       }
