@@ -48,8 +48,8 @@ Access and refresh tokens stay in server memory. They do not go to browser stora
 ## Checks
 
 ```sh
-npm test
 npm run build
+npm test
 npm start
 ```
 
@@ -66,14 +66,14 @@ The API request and response fields were checked against Google's v4 discovery d
 
 ## Public page on theoazriel.com
 
-The public build runs at `https://theoazriel.com/health/` in a separate Cloudflare Worker, `theo-health`. It does not deploy or modify the notes site. Visitors can read every measurement shown by this dashboard without signing in. Google access still uses only the three read-only scopes above.
+The public build runs at `https://theoazriel.com/health/` in a separate Cloudflare Worker, `theo-health`. It does not deploy or modify the notes site. Visitors can read only fixed weekly totals for steps and active zone minutes. Each week is published after a seven-day delay. Google access still uses only the three read-only scopes above.
 
 1. Complete Google sign-in on the local dashboard. If Google returns 403, add the Fitbit Google account to the Cloud project's Test users list.
 2. Click **Publish my health data** on the local dashboard.
 3. The local server sends the OAuth client and refresh token directly to the owner-only cloud endpoint over HTTPS. They are never sent to visitors or browser storage.
 4. The cloud service encrypts credentials with AES-GCM. Its encryption key and owner access key are Cloudflare secrets. Private state is stored in a Durable Object.
-5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. Each sync reads the last 14 days. The service retains up to 90 days of records as they accumulate.
-6. The public response contains an explicit list of display fields. It excludes account identifiers, email addresses, OAuth credentials, and raw record metadata. Missing data stays empty; the public build never substitutes sample values.
+5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. Each sync reads only steps and active zone minutes for the last 28 days in two 14-day requests. The service retains up to 90 days of activity records as they accumulate. Sleep and health measurements are not fetched or stored by the cloud sync.
+6. The public response contains only the sharing policy and 12 calendar weeks of activity totals. Weeks run from Monday through Sunday, using Hong Kong time. Each week becomes eligible at midnight on the second Monday after its start. Each metric needs seven recorded daily values; otherwise its total is null. Visitors cannot change the date range or request daily data. No exact sync timestamps, sleep records, medical measurements, account details, or credentials appear in this response. Missing data stays empty; the public build never substitutes sample values.
 7. Click **Remove public data** in the local dashboard to remove the cloud connection and its records. Local Google sign-in is separate. **Disconnect account** revokes local Google access; that can also stop future cloud syncs, but does not remove already published records.
 
 Local owner settings are in `.local/public-cloud.json`. Cloud secret backup values are in `.local/cloud-secrets.json`. Both files have owner-only permissions and are excluded from Git. Do not put either file in a public asset folder.
@@ -109,5 +109,20 @@ The health deployment workflow uses the repository's `CLOUDFLARE_API_TOKEN` and
 `theo-health` and its route. The Worker name, route, Durable Object binding, and
 migration tag are unchanged. Do not rename them during a source-only move.
 
-The current public API includes all supported display measurements. A narrower
-public data policy has not been applied as part of the repository move.
+## Public privacy policy
+
+- Public: weekly steps and intensity-weighted active zone minutes only.
+- Delay: seven full days after the week ends. For example, 28 September to
+  4 October 2026 first appears on 12 October 2026 at 00:00 Hong Kong time.
+- Private: daily values, sleep duration and stages, sleep times, resting heart
+  rate, HRV, blood oxygen, breathing rate, and account information.
+- The server applies this policy to every response, including old stored data.
+  Query parameters cannot select newer data or individual days.
+- Old cloud snapshots are reduced to activity-only records when the service
+  starts. The local owner dashboard can still show all authorized measurements.
+- An incomplete week displays a dash, never a partial total or sample value.
+
+The GitHub deployment token needs `Workers Scripts: Edit` for the account and
+`Workers Routes: Edit` for the `theoazriel.com` zone. Keep route access limited
+to that zone. Updating the existing token permissions does not require copying
+or replacing the GitHub secret.

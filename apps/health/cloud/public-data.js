@@ -1,57 +1,66 @@
-const metrics = [
-  'steps',
-  'zoneMinutes',
-  'restingHeartRate',
-  'hrv',
-  'oxygen',
-  'respiratoryRate',
-  'sleepMinutes',
-];
-const numeric = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-const minutes = (v) =>
-  v !== undefined && v !== null && Number.isFinite(Number(v)) ? String(Number(v)) : undefined;
-export function publicData(data) {
+import { addDays, validDate } from '../server/health.js';
+
+export const PUBLIC_POLICY = {
+  version: 2,
+  metrics: ['steps', 'zoneMinutes'],
+  aggregation: 'calendar-week',
+  weekStartsOn: 'Monday',
+  delayDays: 7,
+  timeZone: 'Asia/Hong_Kong',
+};
+const numeric = (value) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+export function hongKongDate(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: PUBLIC_POLICY.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+// Private cloud storage needs only activity. Strip old medical data during migration.
+export function activitySnapshot(data) {
   return {
-    mode: 'live',
-    source: 'Theo’s Google and Fitbit wearable devices',
     fetchedAt: data.fetchedAt,
-    warnings: (data.warnings || []).map((w) => ({
-      metric: w.metric,
-      status: w.status,
-      message: w.message,
-    })),
-    days: data.days.map((row) => {
-      const result = {
+    days: (data.days || [])
+      .filter((row) => validDate(row.date))
+      .map((row) => ({
         date: row.date,
-        ...Object.fromEntries(metrics.map((k) => [k, numeric(row[k])])),
-        sleep: null,
-      };
-      if (row.sleep) {
-        const s = row.sleep;
-        result.sleep = {
-          interval: {
-            startTime: s.interval?.startTime,
-            endTime: s.interval?.endTime,
-            startUtcOffset: s.interval?.startUtcOffset,
-            endUtcOffset: s.interval?.endUtcOffset,
-          },
-          summary: {
-            minutesAsleep: minutes(s.summary?.minutesAsleep),
-            stagesSummary: (s.summary?.stagesSummary || []).map((v) => ({
-              type: v.type,
-              minutes: minutes(v.minutes),
-            })),
-          },
-          stages: (s.stages || []).map((v) => ({
-            type: v.type,
-            startTime: v.startTime,
-            endTime: v.endTime,
-          })),
-        };
-      }
-      return result;
-    }),
+        steps: numeric(row.steps),
+        zoneMinutes: numeric(row.zoneMinutes),
+      })),
   };
+}
+export function publicData(data, now = new Date()) {
+  const date = hongKongDate(now);
+  const dayOfWeek = new Date(`${date}T12:00:00Z`).getUTCDay();
+  const monday = addDays(date, -((dayOfWeek + 6) % 7));
+  // Last eligible Sunday ends at midnight seven full days before this Monday.
+  const lastEndExclusive = addDays(monday, -7);
+  const records = new Map(activitySnapshot(data).days.map((row) => [row.date, row]));
+  const weeks = Array.from({ length: 12 }, (_, index) => {
+    const start = addDays(lastEndExclusive, (index - 12) * 7);
+    const rows = Array.from({ length: 7 }, (_, offset) => records.get(addDays(start, offset)));
+    const totals = Object.fromEntries(
+      PUBLIC_POLICY.metrics.map((metric) => {
+        const values = rows.map((row) => numeric(row?.[metric]));
+        // Partial sums would let visitors infer individual days. Publish complete totals only.
+        return [
+          metric,
+          values.every((value) => value !== null)
+            ? values.reduce((sum, value) => sum + value, 0)
+            : null,
+        ];
+      }),
+    );
+    return { start, end: addDays(start, 6), ...totals };
+  });
+  return { mode: 'live', policy: PUBLIC_POLICY, weeks };
+}
+export async function readPublicData(storage, now = new Date()) {
+  const snapshot = await storage.get('snapshot');
+  // Always apply the policy at the response boundary, including to legacy snapshots.
+  return publicData(snapshot || { days: [] }, now);
 }
 export async function seal(value, keyText) {
   const key = await crypto.subtle.importKey(

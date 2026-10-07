@@ -95,7 +95,7 @@ export function normalize(raw, start, days) {
   }
   return rows;
 }
-export async function fetchHealth(client, endDate, days) {
+export async function fetchHealth(client, endDate, days, metrics) {
   const start = addDays(endDate, 1 - days),
     end = addDays(endDate, 1);
   const raw = {},
@@ -110,62 +110,64 @@ export async function fetchHealth(client, endDate, days) {
     ['respiratoryRate', 'daily-respiratory-rate', false],
   ];
   await Promise.all(
-    specs.map(async ([key, type, rollup]) => {
-      try {
-        let token;
-        const seen = new Set();
-        const points = [];
-        do {
-          const field =
-            type === 'sleep'
-              ? 'sleep.interval.civil_end_time'
-              : `${type.replaceAll('-', '_')}.date`;
-          const url = `https://health.googleapis.com/v4/users/me/dataTypes/${type}/dataPoints${rollup ? ':dailyRollUp' : ':reconcile'}`;
-          const result = await client.request({
-            url,
-            method: rollup ? 'POST' : 'GET',
-            timeout: 20000,
-            ...(rollup
-              ? {
-                  data: {
-                    range: { start: civil(start), end: civil(end) },
-                    windowSizeDays: 1,
-                    dataSourceFamily: 'users/me/dataSourceFamilies/google-wearables',
-                    ...(token ? { pageToken: token } : {}),
-                  },
-                }
-              : {
-                  params: {
-                    filter: `${field} >= "${start}" AND ${field} < "${end}"`,
-                    dataSourceFamily: 'users/me/dataSourceFamilies/google-wearables',
-                    pageSize: type === 'sleep' ? 25 : 1000,
-                    ...(token ? { pageToken: token } : {}),
-                  },
-                }),
+    specs
+      .filter(([key]) => !metrics || metrics.includes(key))
+      .map(async ([key, type, rollup]) => {
+        try {
+          let token;
+          const seen = new Set();
+          const points = [];
+          do {
+            const field =
+              type === 'sleep'
+                ? 'sleep.interval.civil_end_time'
+                : `${type.replaceAll('-', '_')}.date`;
+            const url = `https://health.googleapis.com/v4/users/me/dataTypes/${type}/dataPoints${rollup ? ':dailyRollUp' : ':reconcile'}`;
+            const result = await client.request({
+              url,
+              method: rollup ? 'POST' : 'GET',
+              timeout: 20000,
+              ...(rollup
+                ? {
+                    data: {
+                      range: { start: civil(start), end: civil(end) },
+                      windowSizeDays: 1,
+                      dataSourceFamily: 'users/me/dataSourceFamilies/google-wearables',
+                      ...(token ? { pageToken: token } : {}),
+                    },
+                  }
+                : {
+                    params: {
+                      filter: `${field} >= "${start}" AND ${field} < "${end}"`,
+                      dataSourceFamily: 'users/me/dataSourceFamilies/google-wearables',
+                      pageSize: type === 'sleep' ? 25 : 1000,
+                      ...(token ? { pageToken: token } : {}),
+                    },
+                  }),
+            });
+            points.push(...(result.data[rollup ? 'rollupDataPoints' : 'dataPoints'] || []));
+            token = result.data.nextPageToken;
+            if (token && seen.has(token)) throw new Error('Repeated page token');
+            if (token) seen.add(token);
+            if (seen.size > 100) throw new Error('Page limit exceeded');
+          } while (token);
+          raw[key] = points;
+        } catch (e) {
+          const status = e.response?.status;
+          warnings.push({
+            metric: key,
+            status: status || 502,
+            message:
+              status === 403
+                ? 'Access denied. Check the API and read permissions.'
+                : status === 401
+                  ? 'Sign in again to restore access.'
+                  : status === 429
+                    ? 'Google request limit reached. Try again later.'
+                    : 'Data could not be loaded. Try again.',
           });
-          points.push(...(result.data[rollup ? 'rollupDataPoints' : 'dataPoints'] || []));
-          token = result.data.nextPageToken;
-          if (token && seen.has(token)) throw new Error('Repeated page token');
-          if (token) seen.add(token);
-          if (seen.size > 100) throw new Error('Page limit exceeded');
-        } while (token);
-        raw[key] = points;
-      } catch (e) {
-        const status = e.response?.status;
-        warnings.push({
-          metric: key,
-          status: status || 502,
-          message:
-            status === 403
-              ? 'Access denied. Check the API and read permissions.'
-              : status === 401
-                ? 'Sign in again to restore access.'
-                : status === 429
-                  ? 'Google request limit reached. Try again later.'
-                  : 'Data could not be loaded. Try again.',
-        });
-      }
-    }),
+        }
+      }),
   );
   return {
     mode: 'live',

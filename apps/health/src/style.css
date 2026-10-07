@@ -997,3 +997,72 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+.sharing-note {
+  color: var(--muted);
+  margin-bottom: 2rem;
+}
+.weekly-summary {
+  margin-top: 3rem;
+}
+.weekly-summary .metrics {
+  margin-top: 1.5rem;
+}
+.weekly-summary .metric-body strong {
+  font-size: 2rem;
+  font-weight: 400;
+}
+.weekly-history {
+  margin-top: 4rem;
+}
+.week-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+.week-list button {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.week-value {
+  font-variant-numeric: tabular-nums;
+}
+.week-track {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: #f3f3f3;
+}
+.week-track > span {
+  display: block;
+  height: 100%;
+  background: #aaa;
+}
+.selected-week .week-track > span {
+  background: #141414;
+}
+.selected-week .week-label {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.public-footer {
+  margin-top: 4rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.public-footer a {
+  display: inline-block;
+  margin-top: 1.5rem;
+}
+@media (max-width: 420px) {
+  .week-label {
+    font-size: 0.8rem;
+  }
+  .week-value {
+    font-size: 0.875rem;
+  }
+}
