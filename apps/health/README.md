@@ -129,9 +129,9 @@ deployment before automated version deployments resume.
 
 ### Public activity view
 
-The page opens as a Monday-first garden calendar. Each shared date has a selectable plant. Stem height compares step counts within the selected period; leaf count compares active zone minutes. Missing step records use dotted stems. Recorded zero steps use a seed at the baseline. Dates outside the public 84-day window are disabled. The alternate Garden view retains 7-, 14-, and 28-day layouts.
+The page opens as a Monday-first garden calendar. Each shared date has a selectable plant. Stem height compares step counts within the selected period; leaf count compares active zone minutes. Missing step records use dotted stems. Recorded zero steps use a seed at the baseline. The garden starts on the first recorded day, so empty history before it is not drawn as missing plants. Dates before that day or outside the public 84-day window are faded and disabled. Garden ranges that would show no more days than a shorter range are disabled. The alternate Garden view retains 7-, 14-, and 28-day layouts.
 
-A butterfly moves to the selected plant, then stops. Selection works with a pointer or keyboard. “Grow again” replays the plant animation. System reduced-motion settings disable movement and wing animation. The selected-day panel and expandable table show exact activity values.
+A butterfly moves to the selected plant and perches above its flower, then stops. Selection works with a pointer or keyboard. “Grow again” replays the plant animation. System reduced-motion settings disable movement and wing animation. The selected-day panel and expandable table show exact activity values.
 
 Blood oxygen is excluded from the public UI, API response, cloud fetch, and stored snapshot. Old cloud snapshots are stripped when loaded. The private local dashboard can still show blood oxygen.
 
