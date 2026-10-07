@@ -9,7 +9,7 @@
     "build": "npm run build --workspaces --if-present",
     "build:gallery": "npm run build --workspace @theo/gallery",
     "build:notes": "npm run build --workspace @theo/notes",
-    "check": "npm run format:check && npm run lint && npm run build && npm run check:workers",
+    "check": "npm run format:check && npm run lint && npm run build && npm run check:workers && npm run check:health",
     "check:workers": "wrangler deploy --dry-run --config apps/home/wrangler.toml && wrangler deploy --dry-run --config apps/cms-auth/wrangler.toml",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -21,7 +21,13 @@
     "deploy:home": "npm run deploy --workspace @theo/home",
     "deploy:gallery": "npm run deploy --workspace @theo/gallery",
     "deploy:notes": "npm run deploy --workspace @theo/notes",
-    "deploy:cms-auth": "npm run deploy --workspace @theo/cms-auth"
+    "deploy:cms-auth": "npm run deploy --workspace @theo/cms-auth",
+    "dev:health": "npm run dev --workspace @theo/health",
+    "build:health": "npm run build --workspace @theo/health",
+    "build:health:public": "npm run build:public --workspace @theo/health",
+    "test:health": "npm test --workspace @theo/health",
+    "deploy:health": "npm run deploy --workspace @theo/health",
+    "check:health": "npm run build:health:public && npm run test:health && npm run check:worker --workspace @theo/health"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

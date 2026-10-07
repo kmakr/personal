@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-public/
+.env
+.env.*
+!.env.example
+.local/
+artifacts/
+.wrangler/
+.dev.vars
+.dev.vars.*
