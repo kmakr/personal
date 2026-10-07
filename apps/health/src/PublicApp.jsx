@@ -76,7 +76,10 @@ function Butterfly({ plot, day, maxSteps, animation, view }) {
       const scale = Math.min(box.width / 48, box.height / 152);
       const height =
         day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
-      const y = box.top - garden.top + (box.height - 152 * scale) / 2 + (132 - height) * scale;
+      // Perch just above the flower head instead of covering it.
+      const perch = day.steps > 0 ? 9 : 0;
+      const y =
+        box.top - garden.top + (box.height - 152 * scale) / 2 + (132 - height - perch) * scale;
       butterfly.style.setProperty('--butterfly-x', `${box.left - garden.left + box.width / 2}px`);
       butterfly.style.setProperty('--butterfly-y', `${y}px`);
       butterfly.style.setProperty('--landed', '1');
@@ -134,7 +137,10 @@ export default function PublicApp() {
     document.title = 'Health | Theo Azriel';
     load();
   }, []);
-  const days = data?.days || [];
+  // The garden starts on the first recorded day, so empty history does not fill the view.
+  const allDays = data?.days || [];
+  const firstRecord = allDays.findIndex(hasValue);
+  const days = firstRecord > 0 ? allDays.slice(firstRecord) : allDays;
   const end = Math.max(0, days.length - offset);
   const months = calendarMonths(days);
   const month = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
@@ -237,10 +243,11 @@ export default function PublicApp() {
               <div className="garden-toolbar">
                 {view === 'garden' && (
                   <div className="garden-ranges" aria-label="Number of days">
-                    {[7, 14, 28].map((value) => (
+                    {[7, 14, 28].map((value, i, options) => (
                       <button
                         key={value}
                         aria-pressed={length === value}
+                        disabled={i > 0 && options[i - 1] >= days.length && length !== value}
                         onClick={() => {
                           setLength(value);
                           setOffset(0);
@@ -292,7 +299,12 @@ export default function PublicApp() {
                   className={
                     view === 'calendar'
                       ? 'calendar-bed'
-                      : `garden-bed ${length === 7 ? 'seven-days' : ''}`
+                      : `garden-bed ${rows.length <= 7 ? 'seven-days' : ''}`
+                  }
+                  style={
+                    view === 'garden' && rows.length > 7
+                      ? { '--plants': Math.min(rows.length, 14) }
+                      : undefined
                   }
                   key={`${view}-${animation}-${rows[0].date}`}
                 >
@@ -309,7 +321,7 @@ export default function PublicApp() {
                             key={cell.date}
                             disabled
                             className="calendar-unshared"
-                            aria-label={`${date(cell.date, true)}: outside the shared date range`}
+                            aria-label={`${date(cell.date, true)}: ${days.length && cell.date < days[0].date ? 'before the first record' : 'not shared yet'}`}
                           >
                             <span>{Number(cell.date.slice(-2))}</span>
                             <span aria-hidden="true">·</span>
@@ -359,7 +371,7 @@ export default function PublicApp() {
               </div>
               <p className="garden-help">
                 Select a day to see its numbers. Shapes compare days within this view. A dotted stem
-                means no step record. Faded dates are outside the shared range.
+                means no step record. Faded dates have no shared record yet.
               </p>
               {day && (
                 <div className="selected-day-panel" aria-live="polite" aria-atomic="true">

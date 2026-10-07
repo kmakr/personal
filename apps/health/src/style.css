@@ -1068,7 +1068,7 @@ dialog::backdrop {
 }
 .garden-bed {
   display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--plants, 14), minmax(0, 1fr));
   align-items: end;
   margin: 1.5rem 0 1rem;
   gap: 2px;
