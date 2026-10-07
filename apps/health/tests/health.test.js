@@ -122,3 +122,26 @@ test('cloud activity fetch never requests sleep or medical measurements', async 
     ),
   );
 });
+
+test('approved cloud metrics include daily oxygen averages but no other health data', async () => {
+  const calls = [];
+  const result = await fetchHealth(
+    {
+      request: async (input) => {
+        calls.push(input);
+        return {
+          data: { dataPoints: [{ dailyOxygenSaturation: { date, averagePercentage: 98.2 } }] },
+        };
+      },
+    },
+    '2026-09-22',
+    1,
+    ['steps', 'zoneMinutes', 'oxygen'],
+  );
+  assert.equal(calls.length, 3);
+  const oxygen = calls.find((input) => input.url.includes('daily-oxygen-saturation'));
+  assert.equal(oxygen.method, 'GET');
+  assert.ok(oxygen.url.endsWith(':reconcile'));
+  assert.equal(result.days[0].oxygen, 98.2);
+  assert.ok(!calls.some((input) => /sleep|heart-rate|respiratory/.test(input.url)));
+});

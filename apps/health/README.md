@@ -66,14 +66,14 @@ The API request and response fields were checked against Google's v4 discovery d
 
 ## Public page on theoazriel.com
 
-The public build runs at `https://theoazriel.com/health/` in a separate Cloudflare Worker, `theo-health`. It does not deploy or modify the notes site. Visitors can read only fixed weekly totals for steps and active zone minutes. Each week is published after a seven-day delay. Google access still uses only the three read-only scopes above.
+The public build runs at `https://theoazriel.com/health/` in a separate Cloudflare Worker, `theo-health`. It does not deploy or modify the notes site. Visitors can read daily steps, active zone minutes, and average blood oxygen. Each day is published after seven full days. Complete weekly activity totals remain in the API. Google access still uses only the three read-only scopes above.
 
 1. Complete Google sign-in on the local dashboard. If Google returns 403, add the Fitbit Google account to the Cloud project's Test users list.
 2. Click **Publish my health data** on the local dashboard.
 3. The local server sends the OAuth client and refresh token directly to the owner-only cloud endpoint over HTTPS. They are never sent to visitors or browser storage.
 4. The cloud service encrypts credentials with AES-GCM. Its encryption key and owner access key are Cloudflare secrets. Private state is stored in a Durable Object.
-5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. The first sync requests 98 days of steps and active zone minutes in 14-day windows. A failed history request is retried on the next sync. Later syncs refresh the last 28 days. The service retains 98 days, which covers the 12 public weeks and the sharing delay. Sleep and health measurements are not fetched or stored by the cloud sync.
-6. The public response contains only the sharing policy and 12 calendar weeks of activity totals. Weeks run from Monday through Sunday, using Hong Kong time. Each week becomes eligible at midnight on the second Monday after its start. Each metric needs seven recorded daily values; otherwise its total is null. Visitors cannot change the date range or request daily data. No exact sync timestamps, sleep records, medical measurements, account details, or credentials appear in this response. Missing data stays empty; the public build never substitutes sample values.
+5. The first sync starts at once. Later syncs run once per hour, even when this computer is off. The first sync requests 98 days of steps, active zone minutes, and daily average blood oxygen in 14-day windows. A failed history request is retried on the next sync. Later syncs refresh the last 28 days. The service retains 98 days, which covers the 12 public weeks and the sharing delay. Sleep, heart rate, HRV, and breathing rate are not fetched or stored by the cloud sync. A sharing-policy version change triggers a fresh history request so newly approved measurements are loaded.
+6. The public response contains the sharing policy, a fixed 84-day daily window, and 12 calendar weeks of activity totals. Dates use Hong Kong time. A daily record appears after its day ends and seven full days pass. For example, 30 September 2026 appears at 00:00 on 8 October. Each weekly metric still needs seven recorded daily values. Daily values remain visible when a week is incomplete. Query parameters cannot bypass the delay or request other measurements. No exact sync timestamps, sleep records, unapproved measurements, account details, or credentials appear in the response. Missing data stays empty; the public build never substitutes sample values.
 7. Click **Remove public data** in the local dashboard to remove the cloud connection and its records. Local Google sign-in is separate. **Disconnect account** revokes local Google access; that can also stop future cloud syncs, but does not remove already published records.
 
 Local owner settings are in `.local/public-cloud.json`. Cloud secret backup values are in `.local/cloud-secrets.json`. Both files have owner-only permissions and are excluded from Git. Do not put either file in a public asset folder.
@@ -112,16 +112,12 @@ migration tag are unchanged. Do not rename them during a source-only move.
 
 ## Public privacy policy
 
-- Public: weekly steps and intensity-weighted active zone minutes only.
-- Delay: seven full days after the week ends. For example, 28 September to
-  4 October 2026 first appears on 12 October 2026 at 00:00 Hong Kong time.
-- Private: daily values, sleep duration and stages, sleep times, resting heart
-  rate, HRV, blood oxygen, breathing rate, and account information.
-- The server applies this policy to every response, including old stored data.
-  Query parameters cannot select newer data or individual days.
-- Old cloud snapshots are reduced to activity-only records when the service
-  starts. The local owner dashboard can still show all authorized measurements.
-- An incomplete week displays a dash, never a partial total or sample value.
+- Public: daily steps, intensity-weighted active zone minutes, and daily average blood oxygen (SpO2). Complete weekly activity totals are also available in the API.
+- Delay: seven full days after each day ends, using Hong Kong time. Weekly totals retain their seven-day delay after the week ends.
+- Private: sleep duration and stages, sleep times, heart rate, HRV, breathing rate, and account information.
+- The server applies this field allowlist and date limit to every response, including old stored data. Query parameters cannot override them.
+- Cloud snapshots retain only the three approved measurements. The local owner dashboard can still show all authorized measurements.
+- Missing values stay null. Partial-period sums on the page show their recorded-day counts. Incomplete weekly API totals stay null.
 
 Automatic deployment uses `wrangler versions upload` and deploys that exact
 version tag at 100 percent traffic. It keeps the existing `/health/` route and
@@ -133,4 +129,8 @@ deployment before automated version deployments resume.
 
 ### Public activity view
 
-The page shows a weekly step mosaic, step milestones, an average calculated from the weekly total, and an interactive week chart. Comparisons use the immediately preceding calendar week only when both totals exist. Best-week and cumulative totals use only the complete weeks in the current view. These displays use the same public weekly totals; they do not expose daily records. Missing totals remain missing, including days Google does not report as zero.
+The movement garden shows one selectable plant per day. Stem height compares step counts within the selected period; leaf count compares active zone minutes. Missing step records use dotted stems. Recorded zero steps use a seed at the baseline. Choose 7, 14, or 28 days and move through the 84-day history. “Grow again” replays a short animation; the system reduced-motion setting disables it.
+
+The selected-day panel and expandable table show exact recorded values. The blood oxygen chart uses Google's daily average percentage and a labeled 0–100% scale. Gaps remain gaps; the chart does not interpolate missing days or classify health. See [Google's DailyOxygenSaturation schema](https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints#DailyOxygenSaturation).
+
+The owner-only sync response reports whether the sync succeeded, whether the policy's history request completed, and the number of stored days per approved metric. These diagnostics do not appear in the public feed.

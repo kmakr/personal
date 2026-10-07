@@ -551,8 +551,8 @@ export default function App() {
               <div>
                 <b>Share on theoazriel.com</b>
                 <p>
-                  Publish weekly steps and active zone minutes, with a seven-day delay. Sleep and
-                  health measurements stay private.
+                  Publish daily steps, active zone minutes, and average blood oxygen after seven
+                  full days. Sleep, heart rate, HRV, and breathing rate stay private.
                 </p>
               </div>
               <button className="primary" disabled={!status?.connected || busy} onClick={publish}>
