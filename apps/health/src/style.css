@@ -998,11 +998,10 @@ dialog::backdrop {
   }
 }
 
-/* Daily garden: homepage ink, with botanical green and oxygen blue as data keys. */
+/* Garden: homepage ink, botanical green, and one warm butterfly accent. */
 .garden-page {
   --garden-green: #547764;
   --garden-soft: #eff3ee;
-  --oxygen-blue: #557ea5;
 }
 .garden-intro {
   color: var(--muted);
@@ -1207,7 +1206,7 @@ dialog::backdrop {
 }
 .daily-values {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin: 1.2rem 0 0;
 }
@@ -1270,111 +1269,6 @@ dialog::backdrop {
 }
 .garden-highlight strong {
   font-weight: 500;
-}
-.oxygen-section {
-  margin-top: 3rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 1.5rem;
-}
-.oxygen-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.oxygen-heading p {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-.oxygen-symbol {
-  font-size: 2rem;
-  letter-spacing: -0.05em;
-  color: var(--oxygen-blue);
-}
-.oxygen-chart {
-  width: 100%;
-  height: auto;
-  margin-top: 1rem;
-  overflow: visible;
-}
-.oxygen-chart line {
-  stroke: #e4e4e4;
-  stroke-width: 1;
-}
-.oxygen-chart text {
-  fill: #6f6f6f;
-  font-size: 9px;
-}
-.oxygen-chart .oxygen-trace {
-  stroke: var(--oxygen-blue);
-  stroke-width: 1.6;
-}
-.oxygen-point {
-  fill: var(--oxygen-blue);
-  stroke: #fff;
-  stroke-width: 1;
-}
-.oxygen-point.selected {
-  fill: #141414;
-}
-.oxygen-reading-list {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.6rem 2px;
-}
-.oxygen-reading-list button {
-  flex-shrink: 0;
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 5px;
-  text-align: left;
-}
-.oxygen-reading-list button[aria-pressed='true'] {
-  background: #edf2f7;
-}
-.oxygen-reading-list span {
-  font-size: 0.65rem;
-  color: var(--muted);
-}
-.oxygen-reading-list strong {
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-.oxygen-note {
-  font-size: 0.7rem;
-  color: var(--muted);
-  margin-top: 1rem;
-}
-.oxygen-note a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.oxygen-empty {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem 0 1rem;
-}
-.oxygen-empty > span {
-  color: #a7b7c7;
-  font-size: 3rem;
-  border: 1px dashed #cbd4dd;
-  border-radius: 50%;
-  width: 85px;
-  height: 85px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-.oxygen-empty h3 {
-  font-size: 0.8rem;
-}
-.oxygen-empty p {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-top: 0.4rem;
-  max-width: 23rem;
 }
 .daily-records {
   border-block: 1px solid var(--rule);
@@ -1453,7 +1347,7 @@ dialog::backdrop {
   }
   .daily-values {
     gap: 0.6rem;
-    grid-template-columns: 1fr 1.2fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
   .daily-values dt {
     min-height: 2.2rem;
@@ -1478,12 +1372,118 @@ dialog::backdrop {
   .public-health .sync span {
     display: none;
   }
-  .oxygen-empty {
-    gap: 1rem;
+}
+
+.garden-view-switch {
+  display: flex;
+  gap: 1.3rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+.garden-view-switch button {
+  padding: 0.35rem 0;
+  color: var(--muted);
+  border-bottom: 1px solid transparent;
+}
+.garden-view-switch button[aria-pressed='true'] {
+  color: #141414;
+  border-color: #141414;
+}
+.garden-plot {
+  position: relative;
+}
+.garden-butterfly {
+  opacity: var(--landed, 0);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 27px;
+  height: 24px;
+  pointer-events: none;
+  transform: translate(calc(var(--butterfly-x, 0px) - 13px), calc(var(--butterfly-y, 0px) - 24px));
+  transition: transform 0.75s cubic-bezier(0.22, 0.65, 0.35, 1);
+  z-index: 2;
+}
+.garden-butterfly svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-12deg);
+}
+.butterfly-wings {
+  fill: #c29866;
+  transform-origin: 16px 16px;
+  animation: butterfly-flutter 0.18s ease-in-out 4 alternate;
+}
+.butterfly-wings .lower-wings {
+  fill: #dbb98a;
+}
+.butterfly-body {
+  fill: none;
+  stroke: #66523c;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+@keyframes butterfly-flutter {
+  from {
+    transform: scaleX(0.35);
   }
-  .oxygen-empty > span {
-    width: 65px;
-    height: 65px;
-    font-size: 2.5rem;
+  to {
+    transform: scaleX(1);
+  }
+}
+.calendar-weekdays,
+.calendar-bed {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.calendar-weekdays {
+  margin-top: 1.3rem;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+  padding-bottom: 0.5rem;
+}
+.calendar-bed {
+  --cell-height: 128px;
+  gap: 0;
+  border-top: 1px solid var(--rule);
+}
+.calendar-bed > * {
+  height: var(--cell-height);
+  border-bottom: 1px solid #eef0eb;
+}
+.calendar-bed .garden-day {
+  padding: 7px 0 0;
+  border-radius: 8px;
+  justify-content: start;
+}
+.calendar-date {
+  font-size: 0.7rem;
+  height: 20px;
+  line-height: 20px;
+}
+.calendar-bed .garden-plant {
+  height: calc(var(--cell-height) - 30px);
+  flex-shrink: 0;
+}
+.calendar-unshared {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding-top: 7px;
+  font-size: 0.7rem;
+}
+.calendar-unshared span + span {
+  margin-top: 2rem;
+}
+@media (max-width: 480px) {
+  .calendar-bed {
+    --cell-height: 104px;
+  }
+  .garden-butterfly {
+    opacity: var(--landed, 0);
+    width: 24px;
+    height: 22px;
   }
 }

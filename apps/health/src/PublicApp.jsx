@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
+import { calendarCells, calendarMonths } from './garden-calendar.js';
+
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
-const percent = (value) => (value == null ? '—' : `${value.toFixed(1)}%`);
 const date = (value, long = false) =>
   new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -12,8 +13,7 @@ const date = (value, long = false) =>
   });
 const weekday = (value) =>
   new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
-const hasValue = (row) =>
-  row && [row.steps, row.zoneMinutes, row.oxygen].some((value) => value != null);
+const hasValue = (row) => row && [row.steps, row.zoneMinutes].some((value) => value != null);
 
 function Plant({ row, maxSteps, maxMinutes, index }) {
   const height = row.steps == null ? 28 : row.steps === 0 ? 0 : 18 + (row.steps / maxSteps) * 89;
@@ -63,80 +63,43 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
   );
 }
 
-function OxygenChart({ rows, selected, onSelect }) {
-  const known = rows.filter((row) => row.oxygen != null);
-  if (!known.length)
-    return (
-      <div className="oxygen-empty">
-        <span aria-hidden="true">O₂</span>
-        <div>
-          <h3>No oxygen readings in this period</h3>
-          <p>
-            The chart will appear when Google supplies a daily average. Missing readings are not
-            zero.
-          </p>
-        </div>
-      </div>
-    );
-  const x = (i) => 30 + i * (530 / Math.max(1, rows.length - 1));
-  const y = (value) => 126 - value * 1.05;
+function Butterfly({ plot, day, maxSteps, animation, view }) {
+  const insect = useRef(null);
+  useEffect(() => {
+    const parent = plot.current;
+    const target = parent?.querySelector(`[data-date="${day?.date}"] .garden-plant`);
+    const butterfly = insect.current;
+    if (!parent || !target || !butterfly) return;
+    function land() {
+      const box = target.getBoundingClientRect();
+      const garden = parent.getBoundingClientRect();
+      const scale = Math.min(box.width / 48, box.height / 152);
+      const height =
+        day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
+      const y = box.top - garden.top + (box.height - 152 * scale) / 2 + (132 - height) * scale;
+      butterfly.style.setProperty('--butterfly-x', `${box.left - garden.left + box.width / 2}px`);
+      butterfly.style.setProperty('--butterfly-y', `${y}px`);
+      butterfly.style.setProperty('--landed', '1');
+    }
+    land();
+    const observer = new ResizeObserver(land);
+    observer.observe(parent);
+    return () => observer.disconnect();
+  }, [plot, day, maxSteps, animation, view]);
+  if (!day) return null;
   return (
-    <>
-      <svg
-        className="oxygen-chart"
-        viewBox="0 0 580 154"
-        role="img"
-        aria-label="Daily blood oxygen averages. Scale: zero to one hundred percent. Gaps mean no reading."
-      >
-        {[0, 50, 100].map((value) => (
-          <g key={value}>
-            <line x1="30" x2="560" y1={y(value)} y2={y(value)} />
-            <text x="0" y={y(value) + 3}>
-              {value}
-            </text>
-          </g>
-        ))}
-        {rows.map((row, i) => (
-          <g key={row.date}>
-            {row.oxygen != null && i > 0 && rows[i - 1].oxygen != null && (
-              <line
-                className="oxygen-trace"
-                x1={x(i - 1)}
-                y1={y(rows[i - 1].oxygen)}
-                x2={x(i)}
-                y2={y(row.oxygen)}
-              />
-            )}
-            {row.oxygen != null && (
-              <circle
-                className={row.date === selected ? 'oxygen-point selected' : 'oxygen-point'}
-                cx={x(i)}
-                cy={y(row.oxygen)}
-                r={row.date === selected ? 5 : 3}
-              />
-            )}
-          </g>
-        ))}
-        <text x="30" y="149">
-          {date(rows[0].date)}
-        </text>
-        <text x="560" y="149" textAnchor="end">
-          {date(rows.at(-1).date)}
-        </text>
+    <span ref={insect} className="garden-butterfly" aria-hidden="true">
+      <svg key={`${day.date}-${animation}-${view}`} viewBox="0 0 32 28">
+        <g className="butterfly-wings">
+          <path d="M16 17 C-1 15 1 -1 10 4 Q16 8 16 17 M16 17 C33 15 31 -1 22 4 Q16 8 16 17" />
+          <path
+            className="lower-wings"
+            d="M16 16 C2 13 6 29 13 22 L16 17 M16 16 C30 13 26 29 19 22 L16 17"
+          />
+        </g>
+        <path className="butterfly-body" d="M16 10 L16 22 M16 12 Q14 5 11 6 M16 12 Q18 5 21 6" />
       </svg>
-      <div className="oxygen-reading-list" aria-label="Select an oxygen reading">
-        {known.map((row) => (
-          <button
-            key={row.date}
-            aria-pressed={row.date === selected}
-            onClick={() => onSelect(row.date)}
-          >
-            <span>{date(row.date)}</span>
-            <strong>{percent(row.oxygen)}</strong>
-          </button>
-        ))}
-      </div>
-    </>
+    </span>
   );
 }
 
@@ -145,6 +108,9 @@ export default function PublicApp() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
   const [selected, setSelected] = useState(null);
+  const plot = useRef(null);
+  const [view, setView] = useState('calendar');
+  const [selectedMonth, setSelectedMonth] = useState(null);
   const [length, setLength] = useState(14);
   const [offset, setOffset] = useState(0);
   const [animation, setAnimation] = useState(0);
@@ -155,7 +121,7 @@ export default function PublicApp() {
       const response = await fetch('/health/api/dashboard', { cache: 'no-store' });
       if (!response.ok) throw new Error('The activity page could not load. Try Refresh.');
       const next = await response.json();
-      if (next.policy?.version !== 3 || !Array.isArray(next.days))
+      if (next.policy?.version !== 4 || !Array.isArray(next.days))
         throw new Error('The activity page could not load. Try Refresh.');
       setData(next);
     } catch (e) {
@@ -170,7 +136,27 @@ export default function PublicApp() {
   }, []);
   const days = data?.days || [];
   const end = Math.max(0, days.length - offset);
-  const rows = days.slice(Math.max(0, end - length), end);
+  const months = calendarMonths(days);
+  const month = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
+  const cells = calendarCells(days, month);
+  const monthIndex = months.indexOf(month);
+  const rows =
+    view === 'calendar'
+      ? days.filter((row) => row.date.startsWith(month))
+      : days.slice(Math.max(0, end - length), end);
+  const monthLabel = month
+    ? new Date(`${month}-01T12:00:00Z`).toLocaleDateString('en-GB', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    : '';
+  function changeMonth(delta) {
+    setSelectedMonth(months[monthIndex + delta]);
+    setSelected(null);
+    setAnimation((value) => value + 1);
+  }
+
   const day = rows.find((row) => row.date === selected) || rows.findLast(hasValue) || rows.at(-1);
   const maxSteps = Math.max(1, ...rows.map((row) => row.steps || 0));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
@@ -234,60 +220,134 @@ export default function PublicApp() {
                   <Play size={12} /> Grow again
                 </button>
               </div>
+              <div className="garden-view-switch" aria-label="Garden layout">
+                {['calendar', 'garden'].map((mode) => (
+                  <button
+                    key={mode}
+                    aria-pressed={view === mode}
+                    onClick={() => {
+                      setView(mode);
+                      setSelected(null);
+                    }}
+                  >
+                    {mode === 'calendar' ? 'Calendar' : 'Garden'}
+                  </button>
+                ))}
+              </div>
               <div className="garden-toolbar">
-                <div className="garden-ranges" aria-label="Number of days">
-                  {[7, 14, 28].map((value) => (
-                    <button
-                      key={value}
-                      aria-pressed={length === value}
-                      onClick={() => {
-                        setLength(value);
-                        setOffset(0);
-                        setSelected(null);
-                        setAnimation((n) => n + 1);
-                      }}
-                    >
-                      {value} days
-                    </button>
-                  ))}
-                </div>
+                {view === 'garden' && (
+                  <div className="garden-ranges" aria-label="Number of days">
+                    {[7, 14, 28].map((value) => (
+                      <button
+                        key={value}
+                        aria-pressed={length === value}
+                        onClick={() => {
+                          setLength(value);
+                          setOffset(0);
+                          setSelected(null);
+                          setAnimation((n) => n + 1);
+                        }}
+                      >
+                        {value} days
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="garden-paging">
                   <button
-                    aria-label="Previous period"
-                    disabled={offset + length >= days.length}
-                    onClick={() => move(length)}
+                    aria-label={view === 'calendar' ? 'Previous month' : 'Previous period'}
+                    disabled={
+                      view === 'calendar' ? monthIndex <= 0 : offset + length >= days.length
+                    }
+                    onClick={() => (view === 'calendar' ? changeMonth(-1) : move(length))}
                   >
                     <ArrowLeft size={16} />
                   </button>
                   <span>
-                    {date(rows[0].date)} – {date(rows.at(-1).date)}
+                    {view === 'calendar'
+                      ? monthLabel
+                      : `${date(rows[0].date)} – ${date(rows.at(-1).date)}`}
                   </span>
                   <button
-                    aria-label="Next period"
-                    disabled={offset === 0}
-                    onClick={() => move(-length)}
+                    aria-label={view === 'calendar' ? 'Next month' : 'Next period'}
+                    disabled={view === 'calendar' ? monthIndex === months.length - 1 : offset === 0}
+                    onClick={() => (view === 'calendar' ? changeMonth(1) : move(-length))}
                   >
                     <ArrowRight size={16} />
                   </button>
                 </div>
               </div>
+              {view === 'calendar' && (
+                <div className="calendar-weekdays" aria-hidden="true">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+              )}
               <div
-                className={`garden-bed ${length === 7 ? 'seven-days' : ''}`}
-                key={`${animation}-${rows[0].date}`}
+                className={`garden-plot ${view === 'calendar' ? 'calendar-plot' : ''}`}
+                ref={plot}
               >
-                {rows.map((row, i) => (
-                  <button
-                    className={`garden-day ${row.date === day?.date ? 'selected' : ''}`}
-                    key={row.date}
-                    aria-pressed={row.date === day?.date}
-                    aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}, ${row.oxygen == null ? 'oxygen unavailable' : `${percent(row.oxygen)} blood oxygen`}`}
-                    onClick={() => setSelected(row.date)}
-                  >
-                    <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
-                    <span className="garden-day-number">{Number(row.date.slice(-2))}</span>
-                    <span className="garden-day-name">{weekday(row.date)}</span>
-                  </button>
-                ))}
+                <div
+                  className={
+                    view === 'calendar'
+                      ? 'calendar-bed'
+                      : `garden-bed ${length === 7 ? 'seven-days' : ''}`
+                  }
+                  key={`${view}-${animation}-${rows[0].date}`}
+                >
+                  {(view === 'calendar' ? cells : rows.map((row) => ({ date: row.date, row }))).map(
+                    (cell, i) => {
+                      if (!cell)
+                        return (
+                          <span key={`pad-${i}`} className="calendar-padding" aria-hidden="true" />
+                        );
+                      const row = cell.row;
+                      if (!row)
+                        return (
+                          <button
+                            key={cell.date}
+                            disabled
+                            className="calendar-unshared"
+                            aria-label={`${date(cell.date, true)}: outside the shared date range`}
+                          >
+                            <span>{Number(cell.date.slice(-2))}</span>
+                            <span aria-hidden="true">·</span>
+                          </button>
+                        );
+                      return (
+                        <button
+                          className={`garden-day ${row.date === day?.date ? 'selected' : ''}`}
+                          data-date={row.date}
+                          key={row.date}
+                          aria-pressed={row.date === day?.date}
+                          aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
+                          onClick={() => setSelected(row.date)}
+                        >
+                          {view === 'calendar' && (
+                            <span className="calendar-date">{Number(row.date.slice(-2))}</span>
+                          )}
+                          <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
+                          {view === 'garden' && (
+                            <>
+                              <span className="garden-day-number">
+                                {Number(row.date.slice(-2))}
+                              </span>
+                              <span className="garden-day-name">{weekday(row.date)}</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+                <Butterfly
+                  plot={plot}
+                  day={day}
+                  maxSteps={maxSteps}
+                  animation={animation}
+                  view={view}
+                />
               </div>
               <div className="garden-key">
                 <span>
@@ -299,7 +359,7 @@ export default function PublicApp() {
               </div>
               <p className="garden-help">
                 Select a day to see its numbers. Shapes compare days within this view. A dotted stem
-                means no step record.
+                means no step record. Faded dates are outside the shared range.
               </p>
               {day && (
                 <div className="selected-day-panel" aria-live="polite" aria-atomic="true">
@@ -324,10 +384,6 @@ export default function PublicApp() {
                         {count(day.zoneMinutes)}
                         <small> min</small>
                       </dd>
-                    </div>
-                    <div>
-                      <dt>Blood oxygen</dt>
-                      <dd>{percent(day.oxygen)}</dd>
                     </div>
                   </dl>
                 </div>
@@ -369,29 +425,6 @@ export default function PublicApp() {
                 </p>
               )}
             </section>
-            <section className="oxygen-section" aria-label="Blood oxygen history">
-              <div className="oxygen-heading">
-                <div>
-                  <h2>Blood oxygen</h2>
-                  <p>Daily average · SpO₂</p>
-                </div>
-                <span className="oxygen-symbol" aria-hidden="true">
-                  O₂
-                </span>
-              </div>
-              <OxygenChart rows={rows} selected={day?.date} onSelect={setSelected} />
-              <p className="oxygen-note">
-                The daily average supplied by Google, usually measured during sleep. The chart uses
-                a 0–100% scale.{' '}
-                <a
-                  href="https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints#DailyOxygenSaturation"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  About this measurement ↗
-                </a>
-              </p>
-            </section>
             <details className="daily-records">
               <summary>
                 See the daily records <span>{rows.length} days</span>
@@ -406,7 +439,6 @@ export default function PublicApp() {
                       <th scope="col">Date</th>
                       <th scope="col">Steps</th>
                       <th scope="col">Active min</th>
-                      <th scope="col">SpO₂</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -415,7 +447,6 @@ export default function PublicApp() {
                         <th scope="row">{date(row.date)}</th>
                         <td>{count(row.steps)}</td>
                         <td>{count(row.zoneMinutes)}</td>
-                        <td>{percent(row.oxygen)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -429,12 +460,12 @@ export default function PublicApp() {
         )}
         <footer className="public-footer">
           <p>
-            Public: daily steps, active zone minutes, and average blood oxygen. Each day appears
-            after seven full days. Dates use Hong Kong time.
+            Public: daily steps and active zone minutes. Each day appears after seven full days.
+            Dates use Hong Kong time.
           </p>
           <p>
-            Sleep, heart rate, HRV, and breathing rate stay private. Up to 84 days are shown. The
-            garden is a picture of recorded movement, not a health score.
+            Blood oxygen, sleep, heart rate, HRV, and breathing rate stay private. Up to 84 days are
+            shown. The garden is a picture of recorded movement, not a health score.
           </p>
           <a href="https://theoazriel.com/">Back to home ↗</a>
         </footer>

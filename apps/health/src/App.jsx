@@ -551,8 +551,8 @@ export default function App() {
               <div>
                 <b>Share on theoazriel.com</b>
                 <p>
-                  Publish daily steps, active zone minutes, and average blood oxygen after seven
-                  full days. Sleep, heart rate, HRV, and breathing rate stay private.
+                  Publish daily steps and active zone minutes after seven full days. Blood oxygen,
+                  sleep, heart rate, HRV, and breathing rate stay private.
                 </p>
               </div>
               <button className="primary" disabled={!status?.connected || busy} onClick={publish}>

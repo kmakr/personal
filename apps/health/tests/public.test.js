@@ -36,9 +36,9 @@ test('publishes approved daily measurements and strips all other personal and me
   assert.deepEqual(Object.keys(result).sort(), ['days', 'mode', 'policy', 'weeks']);
   assert.deepEqual(
     result.days.find((row) => row.date === '2026-09-21'),
-    { date: '2026-09-21', steps: 1000, zoneMinutes: 10, oxygen: 98 },
+    { date: '2026-09-21', steps: 1000, zoneMinutes: 10 },
   );
-  assert.equal(result.policy.version, 3);
+  assert.equal(result.policy.version, 4);
   for (const field of [
     'private',
     'secret',
@@ -46,12 +46,13 @@ test('publishes approved daily measurements and strips all other personal and me
     'sleep',
     'restingHeartRate',
     'hrv',
+    'oxygen',
     'respiratoryRate',
     'warnings',
   ])
     assert.ok(!JSON.stringify(result).includes(field), field);
   for (const row of result.days)
-    assert.deepEqual(Object.keys(row).sort(), ['date', 'oxygen', 'steps', 'zoneMinutes']);
+    assert.deepEqual(Object.keys(row).sort(), ['date', 'steps', 'zoneMinutes']);
   for (const row of result.weeks)
     assert.deepEqual(Object.keys(row).sort(), ['end', 'start', 'steps', 'zoneMinutes']);
 });
@@ -61,7 +62,7 @@ test('daily disclosure waits seven full days after the day ends at Hong Kong mid
   assert.equal(before.days.at(-1).date, '2026-09-29');
   const after = publicData(input, new Date('2026-10-07T16:00:00Z'));
   assert.equal(after.days.at(-1).date, '2026-09-30');
-  assert.equal(after.days.at(-1).oxygen, 98);
+  assert.equal(after.days.at(-1).steps, 1000);
   assert.ok(!before.days.some((row) => row.date >= '2026-09-30'));
 });
 test('weekly disclosure still waits seven full days after the week ends', () => {
@@ -74,7 +75,7 @@ test('recent and old records cannot enter the fixed 84-day daily window', () => 
   assert.equal(result.days.length, 84);
   assert.equal(result.days[0].date, '2026-07-08');
   assert.equal(result.days.at(-1).date, '2026-09-29');
-  assert.ok(result.days.every((row) => row.steps === null && row.oxygen === null));
+  assert.ok(result.days.every((row) => row.steps === null && row.zoneMinutes === null));
 });
 test('partial weeks keep daily values while totals require seven measured days; zero is valid', () => {
   const rows = fullWeek('2026-09-21', { steps: 0, zoneMinutes: 0 });
@@ -99,8 +100,8 @@ test('snapshot strips unapproved fields and rejects invalid measurements and dat
     {
       fetchedAt: 'timestamp',
       days: [
-        { date: '2026-09-21', steps: 1, zoneMinutes: 2, oxygen: 98.4 },
-        { date: '2026-09-22', steps: null, zoneMinutes: null, oxygen: null },
+        { date: '2026-09-21', steps: 1, zoneMinutes: 2 },
+        { date: '2026-09-22', steps: null, zoneMinutes: null },
       ],
     },
   );
@@ -108,11 +109,7 @@ test('snapshot strips unapproved fields and rejects invalid measurements and dat
 test('an unconnected feed contains no sample measurements', async () => {
   const result = await readPublicData({ get: async () => undefined }, now);
   assert.equal(result.days.length, 84);
-  assert.ok(
-    result.days.every(
-      (row) => row.steps === null && row.zoneMinutes === null && row.oxygen === null,
-    ),
-  );
+  assert.ok(result.days.every((row) => row.steps === null && row.zoneMinutes === null));
 });
 test('cloud credential encryption round-trips and rejects another key', async () => {
   const key = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');

@@ -123,7 +123,7 @@ test('cloud activity fetch never requests sleep or medical measurements', async 
   );
 });
 
-test('approved cloud metrics include daily oxygen averages but no other health data', async () => {
+test('private dashboard still reads daily oxygen averages', async () => {
   const calls = [];
   const result = await fetchHealth(
     {
