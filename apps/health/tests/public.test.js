@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import { sharedSnapshot, publicData, readPublicData, seal, unseal } from '../cloud/public-data.js';
 import { addDays } from '../server/health.js';
 const now = new Date('2026-10-07T04:00:00Z');
+const empty = {
+  steps: null,
+  zoneMinutes: null,
+  sleepMinutes: null,
+  sleepStages: null,
+  restingHeartRate: null,
+  hrv: null,
+  oxygen: null,
+  respiratoryRate: null,
+};
 const fullWeek = (start, values = {}) =>
   Array.from({ length: 7 }, (_, i) => ({
     date: addDays(start, i),
@@ -11,7 +21,20 @@ const fullWeek = (start, values = {}) =>
     oxygen: 98,
     ...values,
   }));
-test('publishes approved daily measurements and strips all other personal and medical fields', async () => {
+const night = {
+  interval: { startTime: '2026-09-20T23:41:00Z', endTime: '2026-09-21T07:02:00Z' },
+  summary: {
+    minutesAsleep: '400',
+    stagesSummary: [
+      { type: 'DEEP', minutes: '80' },
+      { type: 'LIGHT', minutes: '220' },
+      { type: 'REM', minutes: '100' },
+      { type: 'AWAKE', minutes: '41' },
+    ],
+  },
+  stages: [{ type: 'DEEP', startTime: '2026-09-21T00:10:00Z' }],
+};
+test('publishes approved daily measurements and strips all other personal fields', async () => {
   const input = {
     fetchedAt: 'private',
     email: 'private',
@@ -23,7 +46,7 @@ test('publishes approved daily measurements and strips all other personal and me
       respiratoryRate: 14,
       sleepMinutes: 400,
       access_token: 'secret',
-      sleep: { stages: ['private'] },
+      sleep: night,
     }),
   };
   const result = await readPublicData({ get: async () => input }, now);
@@ -37,23 +60,43 @@ test('publishes approved daily measurements and strips all other personal and me
   assert.deepEqual(Object.keys(result).sort(), ['days', 'mode', 'policy', 'weeks']);
   assert.deepEqual(
     result.days.find((row) => row.date === '2026-09-21'),
-    { date: '2026-09-21', steps: 1000, zoneMinutes: 10 },
+    {
+      date: '2026-09-21',
+      steps: 1000,
+      zoneMinutes: 10,
+      sleepMinutes: 400,
+      sleepStages: { deep: 80, light: 220, rem: 100, awake: 41 },
+      restingHeartRate: 60,
+      hrv: 42,
+      oxygen: 98,
+    },
   );
-  assert.equal(result.policy.version, 5);
+  assert.equal(result.policy.version, 6);
+  // Sleep times and the stage sequence never leave, only the four stage totals.
   for (const field of [
     'private',
     'secret',
     'fetchedAt',
-    'sleep',
-    'restingHeartRate',
-    'hrv',
-    'oxygen',
     'respiratoryRate',
     'warnings',
+    'T23:41',
+    'T07:02',
+    'T00:10',
+    'interval',
+    'summary',
   ])
     assert.ok(!JSON.stringify(result).includes(field), field);
   for (const row of result.days)
-    assert.deepEqual(Object.keys(row).sort(), ['date', 'steps', 'zoneMinutes']);
+    assert.deepEqual(Object.keys(row).sort(), [
+      'date',
+      'hrv',
+      'oxygen',
+      'restingHeartRate',
+      'sleepMinutes',
+      'sleepStages',
+      'steps',
+      'zoneMinutes',
+    ]);
   for (const row of result.weeks)
     assert.deepEqual(Object.keys(row).sort(), [
       'breathingRate',
@@ -115,16 +158,25 @@ test('snapshot strips unapproved fields and rejects invalid measurements and dat
       fetchedAt: 'timestamp',
       tokens: 'secret',
       days: [
-        { date: '2026-09-21', steps: 1, zoneMinutes: 2, oxygen: 98.4, hrv: 3 },
-        { date: '2026-09-22', steps: Infinity, zoneMinutes: -1, oxygen: 101 },
+        { date: '2026-09-21', steps: 1, zoneMinutes: 2, oxygen: 98.4, hrv: 3, email: 'x' },
+        {
+          date: '2026-09-22',
+          steps: Infinity,
+          zoneMinutes: -1,
+          oxygen: 101,
+          hrv: 900,
+          restingHeartRate: 4,
+          sleepMinutes: 2000,
+          sleepStages: { deep: -5, rem: 'x' },
+        },
         { date: 'invalid', steps: 1 },
       ],
     }),
     {
       fetchedAt: 'timestamp',
       days: [
-        { date: '2026-09-21', steps: 1, zoneMinutes: 2, respiratoryRate: null },
-        { date: '2026-09-22', steps: null, zoneMinutes: null, respiratoryRate: null },
+        { ...empty, date: '2026-09-21', steps: 1, zoneMinutes: 2, oxygen: 98.4, hrv: 3 },
+        { ...empty, date: '2026-09-22' },
       ],
     },
   );

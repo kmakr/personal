@@ -1,8 +1,17 @@
 import { addDays, validDate } from '../server/health.js';
 
 export const PUBLIC_POLICY = {
-  version: 5,
-  metrics: ['steps', 'zoneMinutes'],
+  version: 6,
+  // Sleep is shared as minutes asleep and minutes per stage; never bed or wake times.
+  metrics: [
+    'steps',
+    'zoneMinutes',
+    'sleepMinutes',
+    'sleepStages',
+    'restingHeartRate',
+    'hrv',
+    'oxygen',
+  ],
   // Shared only as a whole-number weekly average, never as a daily value.
   weeklyAverages: ['breathingRate'],
   aggregation: 'daily-and-calendar-week',
@@ -10,12 +19,48 @@ export const PUBLIC_POLICY = {
   delayDays: 7,
   timeZone: 'Asia/Hong_Kong',
 };
-// Fetched and kept in private storage. Breathing rate is stored per day only so
-// the weekly average can be worked out; the feed never includes the daily value.
-export const STORED_METRICS = [...PUBLIC_POLICY.metrics, 'respiratoryRate'];
+// Measurements fetched from Google and kept in private storage. Breathing rate is
+// stored per day only so the weekly average can be worked out; the feed never
+// includes the daily value.
+export const STORED_METRICS = [
+  'steps',
+  'zoneMinutes',
+  'sleep',
+  'restingHeartRate',
+  'hrv',
+  'oxygen',
+  'respiratoryRate',
+];
+// The snapshot fields each fetched measurement fills. A failed fetch keeps these.
+export const metricFields = (metric) =>
+  metric === 'sleep' ? ['sleepMinutes', 'sleepStages'] : [metric];
+const STAGES = ['deep', 'light', 'rem', 'awake'];
 const numeric = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-const breaths = (value) => (numeric(value) !== null && value >= 4 && value <= 60 ? value : null);
+const within = (low, high) => (value) =>
+  numeric(value) !== null && value >= low && value <= high ? value : null;
+const breaths = within(4, 60);
+const beats = within(25, 150);
+const milliseconds = within(1, 300);
+const percent = within(70, 100);
+const minutes = within(0, 1440);
+// Minutes per sleep stage, from Google's stage summary or an already stored copy.
+// Only the four totals are kept: the session's times and stage sequence are dropped.
+function sleepStages(row) {
+  const summary = row.sleep?.summary?.stagesSummary;
+  const source = row.sleepStages
+    ? row.sleepStages
+    : Array.isArray(summary)
+      ? Object.fromEntries(
+          summary.map((stage) => [String(stage?.type).toLowerCase(), stage?.minutes]),
+        )
+      : null;
+  if (!source || typeof source !== 'object') return null;
+  const stages = Object.fromEntries(
+    STAGES.map((stage) => [stage, minutes(Number(source[stage] ?? NaN))]),
+  );
+  return Object.values(stages).some((value) => value !== null) ? stages : null;
+}
 export function hongKongDate(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: PUBLIC_POLICY.timeZone,
@@ -24,7 +69,7 @@ export function hongKongDate(now = new Date()) {
     day: '2-digit',
   }).format(now);
 }
-// Retain only the activity measurements approved for public sharing.
+// Retain only the measurements approved for sharing, plus daily breathing rate.
 export function sharedSnapshot(data) {
   return {
     fetchedAt: data.fetchedAt,
@@ -34,6 +79,11 @@ export function sharedSnapshot(data) {
         date: row.date,
         steps: numeric(row.steps),
         zoneMinutes: numeric(row.zoneMinutes),
+        sleepMinutes: minutes(row.sleepMinutes),
+        sleepStages: sleepStages(row),
+        restingHeartRate: beats(row.restingHeartRate),
+        hrv: milliseconds(row.hrv),
+        oxygen: percent(row.oxygen),
         respiratoryRate: breaths(row.respiratoryRate),
       })),
   };
@@ -74,7 +124,10 @@ export function publicData(data, now = new Date()) {
     const day = addDays(dayEndExclusive, index - 84);
     // Build each row from the allowlist, so stored-only fields never leave.
     const row = records.get(day);
-    return { date: day, steps: row?.steps ?? null, zoneMinutes: row?.zoneMinutes ?? null };
+    return {
+      date: day,
+      ...Object.fromEntries(PUBLIC_POLICY.metrics.map((metric) => [metric, row?.[metric] ?? null])),
+    };
   });
   return { mode: 'live', policy: PUBLIC_POLICY, weeks, days };
 }

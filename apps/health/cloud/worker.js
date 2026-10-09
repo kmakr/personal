@@ -4,6 +4,7 @@ import { fetchHealth, SCOPES } from '../server/health.js';
 import {
   PUBLIC_POLICY,
   STORED_METRICS,
+  metricFields,
   sharedSnapshot,
   readPublicData,
   hongKongDate,
@@ -174,7 +175,7 @@ export class HealthFeed extends DurableObject {
           (await this.ctx.storage.get('historyBackfilled')) === PUBLIC_POLICY.version,
         ...(error ? { error } : {}),
         recordedDays: Object.fromEntries(
-          STORED_METRICS.map((metric) => [
+          STORED_METRICS.flatMap(metricFields).map((metric) => [
             metric,
             (snapshot?.days || []).filter((row) => row[metric] != null).length,
           ]),

@@ -1,5 +1,5 @@
 import { addDays } from '../server/health.js';
-import { sharedSnapshot, STORED_METRICS } from './public-data.js';
+import { metricFields, sharedSnapshot, STORED_METRICS } from './public-data.js';
 
 export const HISTORY_DAYS = 98;
 export async function fetchActivityHistory(client, end, backfilled, fetchHealth) {
@@ -16,7 +16,7 @@ export function mergeActivityHistory(previous, batches, end) {
       const old = merged.get(row.date);
       for (const warning of batch.warnings) {
         if (STORED_METRICS.includes(warning.metric)) {
-          row[warning.metric] = old?.[warning.metric] ?? null;
+          for (const field of metricFields(warning.metric)) row[field] = old?.[field] ?? null;
         }
       }
       merged.set(row.date, row);

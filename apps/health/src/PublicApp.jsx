@@ -4,7 +4,7 @@ import { RefreshCw, Play, Sprout } from 'lucide-react';
 import { stepTrend, trendSentence } from './trend.js';
 import { seasonWeeks } from './season.js';
 import { arrivals, msUntilHongKongMidnight, untilText } from './midnight.js';
-import { fieldNotes } from './field-notes.js';
+import { roots, beatIntervals, spiral, HRV_EXAGGERATION } from './ink-paths.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -21,6 +21,7 @@ const addDays = (value, amount) => {
   next.setUTCDate(next.getUTCDate() + amount);
   return next.toISOString().slice(0, 10);
 };
+const hours = (minutes) => `${Math.floor(minutes / 60)} h ${Math.round(minutes % 60)} min`;
 const hasValue = (row) => row && [row.steps, row.zoneMinutes].some((value) => value != null);
 
 // A small copy of the homepage portal: smoky haze, an ink core, and two bright
@@ -99,6 +100,195 @@ function Plant({ row, maxSteps, maxMinutes, index, wind = null, arriving = false
         </g>
       </g>
     </svg>
+  );
+}
+
+// Sleep as roots below the plant. They grow once the plant has.
+function Roots({ row, index }) {
+  const shape = roots(row);
+  if (!shape) return <div className="garden-roots" aria-hidden="true" />;
+  return (
+    <svg
+      className="garden-roots"
+      viewBox="0 0 48 104"
+      aria-hidden="true"
+      style={{ '--root-delay': `${700 + index * 60}ms` }}
+    >
+      <g className="roots-growth" filter="url(#ink-edge)">
+        <path
+          className="root-tap"
+          d={shape.taproot}
+          pathLength="100"
+          strokeWidth={shape.width}
+          strokeDasharray={shape.breaks ? `${100 / (shape.breaks + 1) - 3} 3` : undefined}
+        />
+        {shape.branches.map((branch, i) => (
+          <path className={`root-branch ${branch.kind}`} d={branch.d} key={i} />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+// Resting heart rate, HRV, and blood oxygen around one portal. It beats at the
+// newest resting pulse; each beat sends out an ink ripple. Twelve weeks of days
+// spiral around it, newest on the outside.
+function Pulse({ days }) {
+  const latest = (key) => days.findLast((day) => day[key] != null);
+  const heart = latest('restingHeartRate');
+  const variability = latest('hrv');
+  const air = latest('oxygen');
+  const svg = useRef(null);
+  const core = useRef(null);
+  const ripples = useRef(null);
+  const rates = days.map((day) => day.restingHeartRate).filter((value) => value != null);
+  const low = Math.min(...rates);
+  const high = Math.max(...rates);
+  const maxHrv = Math.max(1, ...days.map((day) => day.hrv || 0));
+  const points = spiral(
+    days,
+    (day) =>
+      day.restingHeartRate == null
+        ? null
+        : high > low
+          ? (day.restingHeartRate - low) / (high - low)
+          : 0.5,
+    (day) => (day.hrv == null ? null : day.hrv / maxHrv),
+  );
+  const rate = heart?.restingHeartRate;
+  const spread = variability?.hrv;
+  useEffect(() => {
+    if (!rate || reducedMotion()) return;
+    const intervals = beatIntervals(rate, spread);
+    let visible = false;
+    let i = 0;
+    let timer;
+    // Beat only while the portal is on screen and the tab is open.
+    const watcher = new IntersectionObserver(([entry]) => (visible = entry.isIntersecting));
+    watcher.observe(svg.current);
+    function beat() {
+      const gap = intervals[i++ % intervals.length];
+      if (visible && !document.hidden) {
+        core.current.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.16)', offset: 0.18 },
+            { transform: 'scale(0.97)', offset: 0.45 },
+            { transform: 'scale(1)' },
+          ],
+          { duration: Math.min(520, gap * 0.6), easing: 'ease-out' },
+        );
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('r', '16');
+        ring.setAttribute('class', 'pulse-ripple');
+        ripples.current.append(ring);
+        ring
+          .animate(
+            [
+              { transform: 'scale(1)', opacity: 0.5 },
+              { transform: 'scale(8.8)', opacity: 0 },
+            ],
+            { duration: 3200, easing: 'cubic-bezier(.2,.6,.4,1)' },
+          )
+          .finished.then(
+            () => ring.remove(),
+            () => ring.remove(),
+          );
+      }
+      timer = setTimeout(beat, gap);
+    }
+    timer = setTimeout(beat, 400);
+    return () => {
+      clearTimeout(timer);
+      watcher.disconnect();
+    };
+  }, [rate, spread]);
+  if (!heart && !variability && !air) return null;
+  return (
+    <section className="pulse" aria-labelledby="pulse-title">
+      <h2 id="pulse-title">The pulse</h2>
+      <svg
+        ref={svg}
+        className="pulse-plot"
+        viewBox="0 0 300 300"
+        role="img"
+        aria-label={[
+          heart &&
+            `Resting heart rate ${heart.restingHeartRate} beats a minute on ${date(heart.date, true)}.`,
+          variability && `Heart rate variability ${count(variability.hrv)} milliseconds.`,
+          air && `Blood oxygen ${air.oxygen} percent.`,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <g className="pulse-spiral">
+          {points.map(
+            (point) =>
+              (point.dot != null || point.haze != null) && (
+                <g key={point.date}>
+                  {point.haze != null && (
+                    <circle
+                      className="spiral-haze"
+                      cx={point.x}
+                      cy={point.y}
+                      r={point.haze}
+                      filter="url(#ink-haze)"
+                    />
+                  )}
+                  {point.dot != null && (
+                    <circle
+                      className="spiral-dot"
+                      cx={point.x}
+                      cy={point.y}
+                      r={point.dot}
+                      filter="url(#ink-edge)"
+                    />
+                  )}
+                </g>
+              ),
+          )}
+        </g>
+        <g transform="translate(150 150)">
+          <g ref={ripples} />
+          {air && (
+            <circle
+              className="oxygen-ring"
+              r="23"
+              pathLength="100"
+              style={{ '--oxygen': air.oxygen }}
+              filter="url(#ink-edge)"
+            />
+          )}
+          <g ref={core}>
+            <Portal r={15} />
+          </g>
+        </g>
+      </svg>
+      <ul className="pulse-key">
+        {heart && (
+          <li>
+            <strong>{heart.restingHeartRate}</strong> resting beats a minute on {date(heart.date)}.
+            The portal beats at that pace.
+          </li>
+        )}
+        {variability && (
+          <li>
+            <strong>{count(variability.hrv)} ms</strong> heart rate variability. The gaps between
+            ripples vary with it, {HRV_EXAGGERATION} times exaggerated so you can see it.
+          </li>
+        )}
+        {air && (
+          <li>
+            <strong>{air.oxygen}%</strong> blood oxygen. The ring around the portal is inked to that
+            share.
+          </li>
+        )}
+        <li>
+          The spiral is the last twelve weeks, newest on the outside. Bigger dots mean a higher
+          resting heart rate; a wider haze means more variability.
+        </li>
+      </ul>
+    </section>
   );
 }
 
@@ -288,9 +478,9 @@ export default function PublicApp() {
       const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
       if (!response.ok) throw new Error('The activity page could not load.');
       const next = await response.json();
-      // Version 4 lacks the weekly breathing rate. The edge cache can still serve it
-      // for five minutes after a deploy, so accept both.
-      if (![4, 5].includes(next.policy?.version) || !Array.isArray(next.days))
+      // Older versions lack breathing, sleep, and heart measurements. The edge cache
+      // can still serve one for five minutes after a deploy, so accept them.
+      if (![4, 5, 6].includes(next.policy?.version) || !Array.isArray(next.days))
         throw new Error('The activity page could not load.');
       const added = arrivals(shown.current?.days, next.days);
       if (added.length) setArriving(added.at(-1));
@@ -334,6 +524,8 @@ export default function PublicApp() {
   // The moth rests on the newest recorded day; the plants are not selectable.
   const day = rows.findLast(hasValue) || rows.at(-1);
   const maxSteps = Math.max(1, ...rows.map((row) => row.steps || 0));
+  // Roots appear once any of the seven nights has sleep to draw.
+  const sleeping = rows.some((row) => roots(row));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
   // Each day is shared seven full days after it ends, so day D appears on D + 8.
   const sharedThrough = allDays.at(-1)?.date;
@@ -341,7 +533,6 @@ export default function PublicApp() {
   const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
   // The moth breathes at the newest weekly average breathing rate, if one is public.
   const breathWeek = data?.weeks?.findLast((week) => week.breathingRate != null);
-  const notes = fieldNotes(rows, hasValue(day) ? day : null, breathWeek);
   return (
     <div className="app-shell public-health garden-page">
       <svg className="ink-defs" aria-hidden="true" focusable="false">
@@ -418,7 +609,7 @@ export default function PublicApp() {
                       className={`garden-day ${row.date === day?.date ? 'visited' : ''}`}
                       data-date={row.date}
                       key={row.date}
-                      aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
+                      aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}, ${row.sleepMinutes == null ? 'sleep unavailable' : `${hours(row.sleepMinutes)} asleep`}`}
                     >
                       <Plant
                         row={row}
@@ -428,6 +619,7 @@ export default function PublicApp() {
                         wind={row.zoneMinutes == null ? null : row.zoneMinutes / maxMinutes}
                         arriving={row.date === arriving}
                       />
+                      {sleeping && <Roots row={row} index={i} />}
                       <span className="garden-day-number">{Number(row.date.slice(-2))}</span>
                       <span className="garden-day-name">{weekday(row.date)}</span>
                     </li>
@@ -448,41 +640,34 @@ export default function PublicApp() {
                 <span>
                   <i className="key-leaf" /> More leaves = more active minutes
                 </span>
+                {sleeping && (
+                  <span>
+                    <i className="key-root" /> Deeper roots = more sleep
+                  </span>
+                )}
               </div>
               <p className="garden-help">
                 Shapes compare the seven days. Plants sway more on days with more active minutes. A
                 dotted stem means no step record.
+                {sleeping &&
+                  " Below ground, each night's sleep: a thicker taproot for more deep sleep, side roots for light sleep, fine roots for REM, and a break for every ten minutes awake."}
               </p>
             </section>
-            {notes.length > 0 && (
-              <section className="field-notes" aria-label="Field notes">
-                <h2>Field notes</h2>
-                <ul>
-                  {notes.map((note) => (
-                    <li key={note}>
-                      <svg viewBox="-8 -8 16 16" aria-hidden="true" focusable="false">
-                        <Portal r={4.2} />
-                      </svg>
-                      <span>{note}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <Pulse days={allDays} />
             {/* One complete week has nothing to compare against yet. */}
             {season.length > 1 && <Season weeks={season} />}
           </>
         )}
         <footer className="public-footer">
           <p>
-            Public: daily steps and active zone minutes, and my breathing rate as one whole-number
-            average per complete week. Each day appears after seven full days. Dates use Hong Kong
-            time.
+            Public: daily steps, active zone minutes, sleep (minutes asleep and per stage), resting
+            heart rate, heart rate variability, and blood oxygen; and my breathing rate as one
+            whole-number average per complete week. Each day appears after seven full days. Dates
+            use Hong Kong time.
           </p>
           <p>
-            Blood oxygen, sleep, heart rate, HRV, and daily breathing rates stay private. The garden
-            shows the last seven shared days. It is a picture of recorded movement, not a health
-            score.
+            Bedtimes, wake times, and daily breathing rates stay private. It is a picture of
+            recorded days, not a health score.
           </p>
           <a href="https://theoazriel.com/">Back to home</a>
         </footer>
