@@ -1,7 +1,7 @@
 import { addDays, validDate } from '../server/health.js';
 
 export const PUBLIC_POLICY = {
-  version: 6,
+  version: 7,
   // Sleep is shared as minutes asleep and minutes per stage; never bed or wake times.
   metrics: [
     'steps',
@@ -16,7 +16,8 @@ export const PUBLIC_POLICY = {
   weeklyAverages: ['breathingRate'],
   aggregation: 'daily-and-calendar-week',
   weekStartsOn: 'Monday',
-  delayDays: 7,
+  // A day is shared once it has ended: at midnight Hong Kong time, yesterday appears.
+  delayDays: 0,
   timeZone: 'Asia/Hong_Kong',
 };
 // Measurements fetched from Google and kept in private storage. Breathing rate is
@@ -92,8 +93,8 @@ export function publicData(data, now = new Date()) {
   const date = hongKongDate(now);
   const dayOfWeek = new Date(`${date}T12:00:00Z`).getUTCDay();
   const monday = addDays(date, -((dayOfWeek + 6) % 7));
-  // Last eligible Sunday ends at midnight seven full days before this Monday.
-  const lastEndExclusive = addDays(monday, -7);
+  // The last eligible week ends on the Sunday before this Monday, plus any delay.
+  const lastEndExclusive = addDays(monday, -PUBLIC_POLICY.delayDays);
   const records = new Map(sharedSnapshot(data).days.map((row) => [row.date, row]));
   const weeks = Array.from({ length: 12 }, (_, index) => {
     const start = addDays(lastEndExclusive, (index - 12) * 7);
@@ -118,7 +119,7 @@ export function publicData(data, now = new Date()) {
         : null;
     return { start, end: addDays(start, 6), ...totals, breathingRate };
   });
-  // A day must end, then wait seven full days. At Oct 7 midnight, Sep 29 is eligible.
+  // A day must end, then wait any delay. With no delay, at Oct 7 midnight Oct 6 appears.
   const dayEndExclusive = addDays(date, -PUBLIC_POLICY.delayDays);
   const days = Array.from({ length: 84 }, (_, index) => {
     const day = addDays(dayEndExclusive, index - 84);

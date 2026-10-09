@@ -478,9 +478,9 @@ export default function PublicApp() {
       const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
       if (!response.ok) throw new Error('The activity page could not load.');
       const next = await response.json();
-      // Older versions lack breathing, sleep, and heart measurements. The edge cache
-      // can still serve one for five minutes after a deploy, so accept them.
-      if (![4, 5, 6].includes(next.policy?.version) || !Array.isArray(next.days))
+      // Older versions lack some measurements. The edge cache can still serve one
+      // for five minutes after a deploy, so accept them.
+      if (!(next.policy?.version >= 4) || !Array.isArray(next.days))
         throw new Error('The activity page could not load.');
       const added = arrivals(shown.current?.days, next.days);
       if (added.length) setArriving(added.at(-1));
@@ -527,7 +527,7 @@ export default function PublicApp() {
   // Roots appear once any of the seven nights has sleep to draw.
   const sleeping = rows.some((row) => roots(row));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
-  // Each day is shared seven full days after it ends, so day D appears on D + 8.
+  // Each day is shared once it ends, so day D appears at midnight starting D + 1.
   const sharedThrough = allDays.at(-1)?.date;
   const trend = trendSentence(stepTrend(allDays));
   const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
@@ -557,7 +557,7 @@ export default function PublicApp() {
         <h1>Health</h1>
         <p className="garden-intro">
           A garden of my daily movement, with a little room to breathe. Real Fitbit records, shared
-          seven days later.
+          the day after.
         </p>
         {trend && <p className="garden-trend">{trend}</p>}
         {sharedThrough && (
@@ -650,7 +650,7 @@ export default function PublicApp() {
                 Shapes compare the seven days. Plants sway more on days with more active minutes. A
                 dotted stem means no step record.
                 {sleeping &&
-                  " Below ground, each night's sleep: a thicker taproot for more deep sleep, side roots for light sleep, fine roots for REM, and a break for every ten minutes awake."}
+                  ' Below ground, the sleep that ended that morning: a thicker taproot for more deep sleep, side roots for light sleep, fine roots for REM, and a break for every ten minutes awake.'}
               </p>
             </section>
             <Pulse days={allDays} />
@@ -662,8 +662,8 @@ export default function PublicApp() {
           <p>
             Public: daily steps, active zone minutes, sleep (minutes asleep and per stage), resting
             heart rate, heart rate variability, and blood oxygen; and my breathing rate as one
-            whole-number average per complete week. Each day appears after seven full days. Dates
-            use Hong Kong time.
+            whole-number average per complete week. Each day appears at midnight once it is over;
+            nothing from the current day is shown. Dates use Hong Kong time.
           </p>
           <p>
             Bedtimes, wake times, and daily breathing rates stay private. It is a picture of

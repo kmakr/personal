@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sharedSnapshot, publicData, readPublicData, seal, unseal } from '../cloud/public-data.js';
 import { addDays } from '../server/health.js';
-const now = new Date('2026-10-07T04:00:00Z');
+const now = new Date('2026-09-30T04:00:00Z');
 const empty = {
   steps: null,
   zoneMinutes: null,
@@ -71,7 +71,7 @@ test('publishes approved daily measurements and strips all other personal fields
       oxygen: 98,
     },
   );
-  assert.equal(result.policy.version, 6);
+  assert.equal(result.policy.version, 7);
   // Sleep times and the stage sequence never leave, only the four stage totals.
   for (const field of [
     'private',
@@ -122,19 +122,19 @@ test('breathing rate is public only as a rounded weekly average of at least four
   rows[5].respiratoryRate = 2;
   assert.equal(publicData({ days: rows }, now).weeks.at(-1).breathingRate, 14);
 });
-test('daily disclosure waits seven full days after the day ends at Hong Kong midnight', () => {
+test('a day is shared once it ends at Hong Kong midnight, never while it is under way', () => {
   const input = { days: fullWeek('2026-09-28') };
-  const before = publicData(input, new Date('2026-10-07T15:59:59Z'));
+  const before = publicData(input, new Date('2026-09-30T15:59:59Z'));
   assert.equal(before.days.at(-1).date, '2026-09-29');
-  const after = publicData(input, new Date('2026-10-07T16:00:00Z'));
+  const after = publicData(input, new Date('2026-09-30T16:00:00Z'));
   assert.equal(after.days.at(-1).date, '2026-09-30');
   assert.equal(after.days.at(-1).steps, 1000);
   assert.ok(!before.days.some((row) => row.date >= '2026-09-30'));
 });
-test('weekly disclosure still waits seven full days after the week ends', () => {
+test('a week is shared once its Sunday ends', () => {
   const input = { days: fullWeek('2026-09-28') };
-  assert.equal(publicData(input, new Date('2026-10-11T15:59:59Z')).weeks.at(-1).end, '2026-09-27');
-  assert.equal(publicData(input, new Date('2026-10-11T16:00:00Z')).weeks.at(-1).steps, 7000);
+  assert.equal(publicData(input, new Date('2026-10-04T15:59:59Z')).weeks.at(-1).end, '2026-09-27');
+  assert.equal(publicData(input, new Date('2026-10-04T16:00:00Z')).weeks.at(-1).steps, 7000);
 });
 test('recent and old records cannot enter the fixed 84-day daily window', () => {
   const result = publicData({ days: [...fullWeek('2026-10-01'), ...fullWeek('2026-06-01')] }, now);

@@ -1,5 +1,5 @@
 // A plain-language step trend over rolling four-week windows. Calendar months
-// would always compare a partly shared month, because of the seven-day delay.
+// would always compare a partly shared month, because the current day is never shared.
 const WINDOW = 28;
 const round = (value) => (Math.round(value / 100) * 100).toLocaleString('en-GB');
 

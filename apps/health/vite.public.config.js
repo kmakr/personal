@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 const url = 'https://theoazriel.com/health/';
 const title = 'Health | Theo Azriel';
 const description =
-  'A garden of daily steps, active minutes, and sleep, with a heartbeat. Real Fitbit records, shared seven days later.';
+  'A garden of daily steps, active minutes, and sleep, with a heartbeat. Real Fitbit records, shared the day after.';
 const meta = [
   ['name', 'description', description],
   ['property', 'og:type', 'website'],
