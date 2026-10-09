@@ -57,10 +57,8 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
         })}
         {row.steps != null && row.steps > 0 && (
           <g className="plant-flower" transform={`translate(24 ${tip})`}>
-            {[0, 60, 120, 180, 240, 300].map((angle) => (
-              <ellipse key={angle} cx="0" cy="-5" rx="2.9" ry="5" transform={`rotate(${angle})`} />
-            ))}
-            <circle r="2.5" />
+            <circle className="plant-rim" r="7.5" />
+            <circle className="plant-head" r="4" />
           </g>
         )}
         {row.steps === 0 && <circle className="plant-zero" cx="24" cy="131" r="3" />}
@@ -83,11 +81,20 @@ function Butterfly({ plot, day, maxSteps, animation, view }) {
       const scale = Math.min(box.width / 48, box.height / 152);
       const height =
         day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
-      // Perch just above the flower head instead of covering it.
-      const perch = day.steps > 0 ? 9 : 0;
+      // Land beside the flower head: above it, a tall stem would push the
+      // butterfly over the calendar date.
+      const side = day.steps > 0 ? 14 : 0;
+      // The butterfly is about 24px tall, so +10 centres it on the head.
       const y =
-        box.top - garden.top + (box.height - 152 * scale) / 2 + (132 - height - perch) * scale;
-      butterfly.style.setProperty('--butterfly-x', `${box.left - garden.left + box.width / 2}px`);
+        box.top -
+        garden.top +
+        (box.height - 152 * scale) / 2 +
+        (132 - height) * scale +
+        (side ? 10 : 0);
+      butterfly.style.setProperty(
+        '--butterfly-x',
+        `${box.left - garden.left + box.width / 2 + side}px`,
+      );
       butterfly.style.setProperty('--butterfly-y', `${y}px`);
       butterfly.style.setProperty('--landed', '1');
     }
@@ -263,6 +270,12 @@ export default function PublicApp() {
   }
   return (
     <div className="app-shell public-health garden-page">
+      <svg className="ink-defs" aria-hidden="true" focusable="false">
+        <filter id="ink-edge">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="7" />
+          <feDisplacementMap in="SourceGraphic" scale="1.6" />
+        </filter>
+      </svg>
       <header className="site-header">
         <a className="title" href="https://theoazriel.com/" aria-label="Theo Azriel home">
           <ink-mark class="site-mark" aria-hidden="true" data-ink-state="static">

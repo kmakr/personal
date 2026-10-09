@@ -96,10 +96,10 @@ svg {
 .site-mark {
   display: block;
   position: relative;
-  width: 56px;
-  height: 56px;
-  /* Optically align the round edge with the name, as on theoazriel.com. */
-  margin-left: -6px;
+  width: 96px;
+  height: 96px;
+  /* The homepage portal's size; optically align its round edge with the name. */
+  margin-left: -12px;
 }
 .site-mark img,
 .site-mark canvas {
@@ -1001,10 +1001,14 @@ dialog::backdrop {
   }
 }
 
-/* Garden: homepage ink, botanical green, and one warm butterfly accent. */
+/* Garden: drawn in the homepage portal's ink on white paper. The selected
+   flower gets the portal's silver rim; nothing else on the page is coloured. */
 .garden-page {
-  --garden-green: #547764;
-  --garden-soft: #eff3ee;
+  --ink: #141414;
+  --ink-faint: #b3b3b0;
+  --ink-rim: #9d9c97;
+  --wash: #f0f0ee;
+  --wash-hover: #f7f7f6;
 }
 .garden-intro {
   color: var(--muted);
@@ -1049,7 +1053,7 @@ dialog::backdrop {
   gap: 0.5rem;
 }
 .garden-heading h2 svg {
-  color: var(--garden-green);
+  color: var(--ink);
 }
 .garden-replay {
   gap: 0.4rem;
@@ -1058,7 +1062,7 @@ dialog::backdrop {
   padding: 0.5rem 0 0.5rem 0.5rem;
 }
 .garden-replay:hover {
-  color: var(--garden-green);
+  color: var(--ink);
 }
 .garden-toolbar {
   justify-content: space-between;
@@ -1111,14 +1115,14 @@ dialog::backdrop {
   transition: background 0.15s;
 }
 .garden-day:hover {
-  background: #f6f7f4;
+  background: var(--wash-hover);
   color: #141414;
 }
 .garden-day.selected {
-  background: var(--garden-soft);
+  background: var(--wash);
 }
 .garden-day:focus-visible {
-  outline: 2px solid var(--garden-green);
+  outline: 1px solid var(--ink);
   outline-offset: 1px;
 }
 .garden-plant {
@@ -1127,36 +1131,44 @@ dialog::backdrop {
   overflow: visible;
 }
 .plant-ground {
-  stroke: #c5cbbf;
+  stroke: #d4d4d2;
   fill: none;
   stroke-width: 1;
 }
 .plant-stem {
   fill: none;
-  stroke: var(--garden-green);
-  stroke-width: 1.5;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 .plant-stem.unrecorded {
-  stroke: #b4b9b1;
+  stroke: var(--ink-faint);
   stroke-dasharray: 2 3;
 }
-.plant-leaf {
-  fill: var(--garden-green);
-  fill-opacity: 0.75;
+.plant-leaf,
+.plant-head {
+  fill: var(--ink);
 }
-.plant-flower ellipse {
-  fill: var(--garden-green);
+/* The selected day is the one place the portal shows: a silver rim. */
+.plant-rim {
+  fill: none;
+  stroke: var(--ink-rim);
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
-.plant-flower circle {
-  fill: #fff;
+.garden-day.selected .plant-rim {
+  opacity: 1;
 }
 .plant-zero,
 .plant-missing {
   fill: #fff;
-  stroke: #a9b2a5;
+  stroke: var(--ink-faint);
   stroke-width: 1;
 }
 .plant-growth {
+  /* A slight wobble on every edge, so the strokes read as brushed ink. */
+  filter: url(#ink-edge);
   transform-origin: 24px 134px;
   animation: garden-grow 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   animation-delay: var(--grow-delay);
@@ -1196,13 +1208,13 @@ dialog::backdrop {
 .key-stem {
   height: 13px;
   width: 2px;
-  background: var(--garden-green);
+  background: var(--ink);
 }
 .key-leaf {
   width: 10px;
   height: 6px;
   border-radius: 9px 0 9px 0;
-  background: var(--garden-green);
+  background: var(--ink);
   transform: rotate(-30deg);
 }
 .garden-help {
@@ -1212,7 +1224,7 @@ dialog::backdrop {
 }
 .selected-day-panel {
   margin-top: 1.5rem;
-  background: #f6f7f4;
+  background: var(--wash-hover);
   padding: 1.2rem 1.3rem;
   border-radius: var(--radius-lg);
 }
@@ -1290,7 +1302,7 @@ dialog::backdrop {
   margin-top: 1.7rem;
 }
 .garden-highlight svg {
-  color: var(--garden-green);
+  color: var(--ink);
 }
 .garden-highlight strong {
   font-weight: 500;
@@ -1304,7 +1316,7 @@ dialog::backdrop {
   gap: 0.5rem;
 }
 .season h2 svg {
-  color: var(--garden-green);
+  color: var(--ink);
 }
 /* Twelve slots always, so the season visibly fills in from the left. */
 .season-bed {
@@ -1472,16 +1484,16 @@ dialog::backdrop {
   transform: rotate(-12deg);
 }
 .butterfly-wings {
-  fill: #c29866;
+  fill: var(--ink);
   transform-origin: 16px 16px;
   animation: butterfly-flutter 0.18s ease-in-out 4 alternate;
 }
 .butterfly-wings .lower-wings {
-  fill: #dbb98a;
+  fill: #6f6f6f;
 }
 .butterfly-body {
   fill: none;
-  stroke: #66523c;
+  stroke: var(--ink);
   stroke-width: 1.1;
   stroke-linecap: round;
 }
@@ -1512,7 +1524,7 @@ dialog::backdrop {
 }
 .calendar-bed > * {
   height: var(--cell-height);
-  border-bottom: 1px solid #eef0eb;
+  border-bottom: 1px solid #f0f0f0;
 }
 .calendar-bed .garden-day {
   padding: 7px 0 0;
@@ -1550,4 +1562,9 @@ dialog::backdrop {
     width: 24px;
     height: 22px;
   }
+}
+.ink-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
