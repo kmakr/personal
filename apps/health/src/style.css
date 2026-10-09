@@ -1162,6 +1162,46 @@ dialog::backdrop {
   animation: garden-grow 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   animation-delay: var(--grow-delay);
 }
+/* Wind: each plant rocks from its base; the moth's flower holds nearly still. */
+.plant-sway {
+  transform-origin: 24px 134px;
+  animation: plant-sway var(--sway-time) ease-in-out var(--sway-delay) infinite alternate;
+}
+.garden-day.selected .plant-sway {
+  --calm: 0.25;
+}
+@keyframes plant-sway {
+  from {
+    transform: rotate(calc(var(--sway) * var(--calm, 1) * -1));
+  }
+  to {
+    transform: rotate(calc(var(--sway) * var(--calm, 1)));
+  }
+}
+/* A new day falls in as a seed, drifting, then sinks into the ground. */
+.plant-seed {
+  animation: plant-seed 1.2s ease-in both;
+}
+@keyframes plant-seed {
+  0% {
+    transform: translate(6px, -128px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-5px, -70px);
+  }
+  80% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 2px);
+    opacity: 0;
+  }
+}
 @keyframes garden-grow {
   from {
     transform: scaleY(0.05);

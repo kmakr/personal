@@ -3,6 +3,7 @@ import { RefreshCw, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
 import { stepTrend, trendSentence } from './trend.js';
 import { seasonWeeks } from './season.js';
+import { arrivals, msUntilHongKongMidnight, untilText } from './midnight.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -35,7 +36,9 @@ function Portal({ cx = 0, cy = 0, r }) {
   );
 }
 
-function Plant({ row, maxSteps, maxMinutes, index }) {
+// wind: 0 to 1, how hard this plant sways; null keeps it still.
+// arriving: the day just became public, so it falls in as a seed first.
+function Plant({ row, maxSteps, maxMinutes, index, wind = null, arriving = false }) {
   const height = row.steps == null ? 28 : row.steps === 0 ? 0 : 18 + (row.steps / maxSteps) * 89;
   const tip = 132 - height;
   const leaves = row.zoneMinutes == null ? 0 : Math.ceil((row.zoneMinutes / maxMinutes) * 6);
@@ -44,41 +47,56 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
       className="garden-plant"
       viewBox="0 0 48 152"
       aria-hidden="true"
-      style={{ '--grow-delay': `${index * 25}ms` }}
+      style={{
+        '--grow-delay': arriving ? '1100ms' : `${index * 25}ms`,
+        ...(wind != null && {
+          '--sway': `${0.6 + wind * 4.4}deg`,
+          '--sway-time': `${3.6 - wind * 1.4}s`,
+          // Each plant lags its neighbour, so a gust rolls along the row.
+          '--sway-delay': `${-index * 0.35}s`,
+        }),
+      }}
     >
       <path className="plant-ground" d="M15 136 Q24 133 33 136" />
+      {arriving && (
+        <g className="plant-seed">
+          <Portal cx={24} cy={131} r={3.2} />
+        </g>
+      )}
       <g className="plant-growth">
-        {height > 0 && (
-          <path
-            className={`plant-stem ${row.steps == null ? 'unrecorded' : ''}`}
-            d={`M24 134 Q${index % 2 ? 16 : 32} ${tip + height / 2} 24 ${tip}`}
-          />
-        )}
-        {Array.from({ length: leaves }, (_, i) => {
-          const y = 122 - (i * Math.max(height - 15, 24)) / 6;
-          return (
+        <g className={wind != null ? 'plant-sway' : undefined}>
+          {height > 0 && (
             <path
-              className="plant-leaf"
-              key={i}
-              d={
-                i % 2
-                  ? `M24 ${y} Q39 ${y + 1} 40 ${y - 13} Q27 ${y - 14} 24 ${y}`
-                  : `M24 ${y} Q9 ${y + 1} 8 ${y - 13} Q21 ${y - 14} 24 ${y}`
-              }
+              className={`plant-stem ${row.steps == null ? 'unrecorded' : ''}`}
+              d={`M24 134 Q${index % 2 ? 16 : 32} ${tip + height / 2} 24 ${tip}`}
             />
-          );
-        })}
-        {row.steps != null && row.steps > 0 && (
-          <g className="plant-flower" transform={`translate(24 ${tip})`}>
-            <circle className="plant-head" r="4" />
-            {/* Only the selected day opens into the portal. */}
-            <g className="plant-portal">
-              <Portal r={5} />
+          )}
+          {Array.from({ length: leaves }, (_, i) => {
+            const y = 122 - (i * Math.max(height - 15, 24)) / 6;
+            return (
+              <path
+                className="plant-leaf"
+                key={i}
+                d={
+                  i % 2
+                    ? `M24 ${y} Q39 ${y + 1} 40 ${y - 13} Q27 ${y - 14} 24 ${y}`
+                    : `M24 ${y} Q9 ${y + 1} 8 ${y - 13} Q21 ${y - 14} 24 ${y}`
+                }
+              />
+            );
+          })}
+          {row.steps != null && row.steps > 0 && (
+            <g className="plant-flower" transform={`translate(24 ${tip})`}>
+              <circle className="plant-head" r="4" />
+              {/* Only the selected day opens into the portal. */}
+              <g className="plant-portal">
+                <Portal r={5} />
+              </g>
             </g>
-          </g>
-        )}
-        {row.steps === 0 && <circle className="plant-zero" cx="24" cy="131" r="3" />}
-        {row.steps == null && <circle className="plant-missing" cx="24" cy={tip} r="3" />}
+          )}
+          {row.steps === 0 && <circle className="plant-zero" cx="24" cy="131" r="3" />}
+          {row.steps == null && <circle className="plant-missing" cx="24" cy={tip} r="3" />}
+        </g>
       </g>
     </svg>
   );
@@ -252,9 +270,14 @@ export default function PublicApp() {
   const [selected, setSelected] = useState(null);
   const plot = useRef(null);
   const [animation, setAnimation] = useState(0);
-  async function load(refresh = false) {
+  // The day that most recently became public while the page was open.
+  const [arriving, setArriving] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+  const shown = useRef(null);
+  // quiet: a background check at midnight; a failure keeps the page as it is.
+  async function load(refresh = false, quiet = false) {
     setBusy(true);
-    setError('');
+    if (!quiet) setError('');
     try {
       // The feed may be up to five minutes old. A retry skips the browser copy.
       const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
@@ -262,9 +285,14 @@ export default function PublicApp() {
       const next = await response.json();
       if (next.policy?.version !== 4 || !Array.isArray(next.days))
         throw new Error('The activity page could not load.');
+      const added = arrivals(shown.current?.days, next.days);
+      if (added.length) setArriving(added.at(-1));
+      shown.current = next;
       setData(next);
+      setNow(Date.now());
+      return next;
     } catch (e) {
-      setError(e.message);
+      if (!quiet) setError(e.message);
     } finally {
       setBusy(false);
     }
@@ -272,7 +300,25 @@ export default function PublicApp() {
   useEffect(() => {
     document.title = 'Health | Theo Azriel';
     load();
+    const clock = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(clock);
   }, []);
+  const lastShared = data?.days.at(-1)?.date;
+  // At midnight Hong Kong time the next day becomes public. The Worker's edge
+  // cache can serve the old feed for up to five minutes after that, so ask
+  // once a minute until the new day appears, for up to eight minutes.
+  useEffect(() => {
+    if (!lastShared) return;
+    let timer;
+    let attempts = 0;
+    async function check() {
+      const next = await load(true, true);
+      if (next?.days.at(-1)?.date === lastShared && ++attempts < 8)
+        timer = setTimeout(check, 60000);
+    }
+    timer = setTimeout(check, msUntilHongKongMidnight() + 15000);
+    return () => clearTimeout(timer);
+  }, [lastShared]);
   const allDays = data?.days || [];
   const firstRecord = allDays.findIndex(hasValue);
   // The garden is the last seven shared days. Days before the first record stay
@@ -336,8 +382,8 @@ export default function PublicApp() {
         {trend && <p className="garden-trend">{trend}</p>}
         {sharedThrough && (
           <p className="garden-status">
-            Shared through {date(sharedThrough, true)}. {date(addDays(sharedThrough, 1))} appears on{' '}
-            {date(addDays(sharedThrough, 9))}.
+            Shared through {date(sharedThrough, true)}. {date(addDays(sharedThrough, 1))} drops in
+            as a seed at midnight Hong Kong time, {untilText(msUntilHongKongMidnight(now))}.
           </p>
         )}
         {error && (
@@ -373,7 +419,9 @@ export default function PublicApp() {
               <div className="garden-plot" ref={plot}>
                 <div
                   className="garden-bed seven-days"
-                  key={`${animation}-${rows[0].date}`}
+                  // Only "Grow again" replays every plant. A day arriving at
+                  // midnight mounts just its own plant; the rest stay grown.
+                  key={animation}
                   role="group"
                   aria-label="Days. Use the arrow keys to move between days."
                   onKeyDown={moveSelection}
@@ -388,7 +436,14 @@ export default function PublicApp() {
                       aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
                       onClick={() => setSelected(row.date)}
                     >
-                      <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
+                      <Plant
+                        row={row}
+                        maxSteps={maxSteps}
+                        maxMinutes={maxMinutes}
+                        index={i}
+                        wind={row.zoneMinutes == null ? null : row.zoneMinutes / maxMinutes}
+                        arriving={row.date === arriving}
+                      />
                       <span className="garden-day-number">{Number(row.date.slice(-2))}</span>
                       <span className="garden-day-name">{weekday(row.date)}</span>
                     </button>
@@ -405,8 +460,8 @@ export default function PublicApp() {
                 </span>
               </div>
               <p className="garden-help">
-                Select a day to see its numbers. Shapes compare the seven days. A dotted stem means
-                no step record.
+                Select a day to see its numbers. Shapes compare the seven days. Plants sway more on
+                days with more active minutes. A dotted stem means no step record.
               </p>
               {day && (
                 <div className="selected-day-panel" aria-live="polite" aria-atomic="true">
