@@ -21,9 +21,8 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
         The portal beats at <a href="/health/"><span class="bpm"></span> a minute</a>, my resting
         heart rate on <span class="bpm-date"></span>.
       </p>
+      <NowPlaying />
     </header>
-
-    <NowPlaying />
 
     <section aria-label="Projects">
       <h2>Projects</h2>
