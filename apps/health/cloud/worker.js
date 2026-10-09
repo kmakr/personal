@@ -20,6 +20,9 @@ const json = (data, status = 200) =>
     },
   });
 const today = hongKongDate;
+// New records arrive at most once an hour, so visitors can share a five-minute copy.
+const FEED_MAX_AGE = 300;
+const feedKey = (origin) => new Request(`${origin}${prefix}/api/dashboard`);
 async function owner(request, env) {
   if (!env.OWNER_KEY) return false;
   const given = request.headers.get('Authorization') || '';
@@ -33,7 +36,7 @@ async function owner(request, env) {
   return x.reduce((r, v, i) => r | (v ^ y[i]), 0) === 0;
 }
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     if (path === '/health') return Response.redirect(`${url.origin}/health/`, 308);
@@ -50,17 +53,32 @@ export default {
           return json({ error: 'Request too large.' }, 413);
         const text = await request.text();
         if (text.length > 32000) return json({ error: 'Request too large.' }, 413);
-        return store.fetch(
+        const response = await store.fetch(
           new Request(`https://internal/${action}`, {
             method: 'POST',
             body: text,
           }),
         );
+        // Remove the cached feed so new or removed records show without the wait.
+        // The edge cache is per data center, so other locations can stay stale for FEED_MAX_AGE.
+        await caches.default.delete(feedKey(url.origin));
+        return response;
       }
       if (path === prefix + '/api/status' && request.method === 'GET')
         return store.fetch('https://internal/status');
-      if (path === prefix + '/api/dashboard' && request.method === 'GET')
-        return store.fetch(`https://internal/data${url.search}`);
+      if (path === prefix + '/api/dashboard' && request.method === 'GET') {
+        // The feed ignores query parameters, so one cache entry serves every request.
+        const key = feedKey(url.origin);
+        const cached = await caches.default.match(key);
+        if (cached) return cached;
+        const response = await store.fetch('https://internal/data');
+        if (!response.ok) return response;
+        const headers = new Headers(response.headers);
+        headers.set('Cache-Control', `public, max-age=${FEED_MAX_AGE}`);
+        const shared = new Response(response.body, { status: response.status, headers });
+        ctx.waitUntil(caches.default.put(key, shared.clone()));
+        return shared;
+      }
       if (path.startsWith(prefix + '/api/')) return json({ error: 'Not found.' }, 404);
       if (!['GET', 'HEAD'].includes(request.method))
         return json({ error: 'Method not allowed.' }, 405);

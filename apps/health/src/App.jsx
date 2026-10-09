@@ -709,11 +709,12 @@ export default function App() {
                         : 'No records loaded'}
                   </p>
                 </div>
-                <div className="segmented" aria-label="Date range">
+                <div className="segmented" role="group" aria-label="Date range">
                   {[7, 14].map((n) => (
                     <button
                       key={n}
                       className={days === n ? 'active' : ''}
+                      aria-pressed={days === n}
                       onClick={() => setDays(n)}
                     >
                       {n} days

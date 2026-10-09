@@ -117,11 +117,12 @@ export default function PublicApp() {
   const [length, setLength] = useState(14);
   const [offset, setOffset] = useState(0);
   const [animation, setAnimation] = useState(0);
-  async function load() {
+  async function load(refresh = false) {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/health/api/dashboard', { cache: 'no-store' });
+      // The feed may be up to five minutes old. Refresh skips the browser copy.
+      const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
       if (!response.ok) throw new Error('The activity page could not load. Try Refresh.');
       const next = await response.json();
       if (next.policy?.version !== 4 || !Array.isArray(next.days))
@@ -171,6 +172,28 @@ export default function PublicApp() {
   const totalSteps = stepDays.reduce((sum, row) => sum + row.steps, 0);
   const totalMinutes = minuteDays.reduce((sum, row) => sum + row.zoneMinutes, 0);
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
+  // One tab stop for the plants: arrow keys move the selection, as in a date grid.
+  function moveSelection(event) {
+    const steps = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: view === 'calendar' ? -7 : -1,
+      ArrowDown: view === 'calendar' ? 7 : 1,
+    };
+    const current = rows.findIndex((row) => row.date === day?.date);
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? rows.length - 1
+          : event.key in steps
+            ? current + steps[event.key]
+            : null;
+    if (next === null || !rows[next]) return;
+    event.preventDefault();
+    setSelected(rows[next].date);
+    plot.current?.querySelector(`[data-date="${rows[next].date}"]`)?.focus();
+  }
   function move(amount) {
     setOffset((value) => Math.max(0, Math.min(Math.max(0, days.length - length), value + amount)));
     setSelected(null);
@@ -196,7 +219,7 @@ export default function PublicApp() {
           <button
             className="secondary sync"
             disabled={busy}
-            onClick={load}
+            onClick={() => load(true)}
             aria-label="Refresh health data"
           >
             <RefreshCw size={15} className={busy ? 'spin' : ''} />
@@ -226,7 +249,7 @@ export default function PublicApp() {
                   <Play size={12} /> Grow again
                 </button>
               </div>
-              <div className="garden-view-switch" aria-label="Garden layout">
+              <div className="garden-view-switch" role="group" aria-label="Garden layout">
                 {['calendar', 'garden'].map((mode) => (
                   <button
                     key={mode}
@@ -242,7 +265,7 @@ export default function PublicApp() {
               </div>
               <div className="garden-toolbar">
                 {view === 'garden' && (
-                  <div className="garden-ranges" aria-label="Number of days">
+                  <div className="garden-ranges" role="group" aria-label="Number of days">
                     {[7, 14, 28].map((value, i, options) => (
                       <button
                         key={value}
@@ -307,6 +330,9 @@ export default function PublicApp() {
                       : undefined
                   }
                   key={`${view}-${animation}-${rows[0].date}`}
+                  role="group"
+                  aria-label="Days. Use the arrow keys to move between days."
+                  onKeyDown={moveSelection}
                 >
                   {(view === 'calendar' ? cells : rows.map((row) => ({ date: row.date, row }))).map(
                     (cell, i) => {
@@ -333,6 +359,7 @@ export default function PublicApp() {
                           data-date={row.date}
                           key={row.date}
                           aria-pressed={row.date === day?.date}
+                          tabIndex={row.date === day?.date ? 0 : -1}
                           aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
                           onClick={() => setSelected(row.date)}
                         >
