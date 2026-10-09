@@ -1032,14 +1032,12 @@ dialog::backdrop {
   font-size: inherit;
 }
 .garden-loading {
-  /* Hold roughly a month's height so the page does not jump when data arrives. */
-  min-height: 46rem;
+  /* Hold roughly the garden's height so the page does not jump when data arrives. */
+  min-height: 28rem;
   color: var(--muted);
   font-size: var(--text-small);
 }
 .garden-heading,
-.garden-toolbar,
-.garden-paging,
 .garden-heading h2,
 .garden-replay {
   display: flex;
@@ -1064,36 +1062,10 @@ dialog::backdrop {
 .garden-replay:hover {
   color: var(--ink);
 }
-.garden-toolbar {
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-top: 1.2rem;
-}
-.garden-ranges {
-  display: flex;
-  gap: 0.2rem;
-  background: #f3f3f1;
-  border-radius: var(--radius-lg);
-  padding: 3px;
-}
-.garden-ranges button {
-  padding: 0.25rem 0.7rem;
+.garden-range {
+  margin-top: 0.4rem;
+  color: var(--muted);
   font-size: var(--text-caption);
-  border-radius: calc(var(--radius-lg) - 3px);
-}
-.garden-ranges button[aria-pressed='true'] {
-  background: #fff;
-  box-shadow: 0 1px 3px #00000014;
-}
-.garden-paging {
-  gap: 0.4rem;
-  font-size: var(--text-caption);
-}
-.garden-paging button {
-  display: grid;
-  place-items: center;
-  padding: 0.5rem;
 }
 .garden-bed {
   display: grid;
@@ -1421,13 +1393,6 @@ dialog::backdrop {
   .garden-plant {
     height: 130px;
   }
-  .garden-toolbar {
-    align-items: flex-start;
-  }
-  .garden-paging {
-    width: 100%;
-    justify-content: space-between;
-  }
   .selected-day-panel {
     padding: 1rem;
   }
@@ -1462,22 +1427,6 @@ dialog::backdrop {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     row-gap: 0.6rem;
   }
-}
-
-.garden-view-switch {
-  display: flex;
-  gap: 1.3rem;
-  margin-top: 1rem;
-  font-size: var(--text-small);
-}
-.garden-view-switch button {
-  padding: 0.35rem 0;
-  color: var(--muted);
-  border-bottom: 1px solid transparent;
-}
-.garden-view-switch button[aria-pressed='true'] {
-  color: #141414;
-  border-color: #141414;
 }
 .garden-plot {
   position: relative;
@@ -1579,57 +1528,9 @@ dialog::backdrop {
     transform: rotate(-4deg);
   }
 }
-.calendar-weekdays,
-.calendar-bed {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-.calendar-weekdays {
-  margin-top: 1.3rem;
-  font-size: var(--text-caption);
-  color: var(--muted);
-  text-align: center;
-  padding-bottom: 0.5rem;
-}
-.calendar-bed {
-  --cell-height: 128px;
-  gap: 0;
-  border-top: 1px solid var(--rule);
-}
-.calendar-bed > * {
-  height: var(--cell-height);
-  border-bottom: 1px solid #f0f0f0;
-}
-.calendar-bed .garden-day {
-  padding: 7px 0 0;
-  border-radius: var(--radius-lg);
-  justify-content: start;
-}
-.calendar-date {
-  font-size: var(--text-caption);
-  height: 20px;
-  line-height: 20px;
-}
-.calendar-bed .garden-plant {
-  height: calc(var(--cell-height) - 30px);
-  flex-shrink: 0;
-}
-.calendar-unshared {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  padding-top: 7px;
-  font-size: var(--text-caption);
-}
-.calendar-unshared span + span {
-  margin-top: 2rem;
-}
 @media (max-width: 480px) {
-  .calendar-bed {
-    --cell-height: 104px;
-  }
   .garden-loading {
-    min-height: 38rem;
+    min-height: 26rem;
   }
   .garden-moth {
     width: 24px;

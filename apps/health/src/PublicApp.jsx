@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
+import { RefreshCw, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
 import { stepTrend, trendSentence } from './trend.js';
-import { calendarCells, calendarMonths, defaultMonth, seasonWeeks } from './garden-calendar.js';
+import { seasonWeeks } from './season.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -116,7 +116,7 @@ function flightPath(from, to) {
   });
 }
 
-function Moth({ plot, day, maxSteps, animation, view }) {
+function Moth({ plot, day, maxSteps, animation }) {
   const insect = useRef(null);
   // Where the moth is now, so the next flight starts from it.
   const perch = useRef(null);
@@ -131,8 +131,7 @@ function Moth({ plot, day, maxSteps, animation, view }) {
       const scale = Math.min(box.width / 48, box.height / 152);
       const height =
         day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
-      // Land beside the flower head: above it, a tall stem would push the
-      // moth over the calendar date.
+      // Land beside the flower head, so the moth never hides the flower.
       const side = day.steps > 0 ? 14 : 0;
       // The moth is about 24px tall, so +10 centres it on the head.
       const to = {
@@ -172,7 +171,7 @@ function Moth({ plot, day, maxSteps, animation, view }) {
     });
     observer.observe(parent);
     return () => observer.disconnect();
-  }, [plot, day, maxSteps, animation, view]);
+  }, [plot, day, maxSteps, animation]);
   if (!day) return null;
   return (
     <span ref={insect} className="garden-moth" aria-hidden="true">
@@ -252,10 +251,6 @@ export default function PublicApp() {
   const [busy, setBusy] = useState(true);
   const [selected, setSelected] = useState(null);
   const plot = useRef(null);
-  const [view, setView] = useState('calendar');
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [length, setLength] = useState(14);
-  const [offset, setOffset] = useState(0);
   const [animation, setAnimation] = useState(0);
   async function load(refresh = false) {
     setBusy(true);
@@ -278,32 +273,11 @@ export default function PublicApp() {
     document.title = 'Health | Theo Azriel';
     load();
   }, []);
-  // The garden starts on the first recorded day, so empty history does not fill the view.
   const allDays = data?.days || [];
   const firstRecord = allDays.findIndex(hasValue);
-  const days = firstRecord > 0 ? allDays.slice(firstRecord) : allDays;
-  const end = Math.max(0, days.length - offset);
-  const months = calendarMonths(days);
-  const month = months.includes(selectedMonth) ? selectedMonth : defaultMonth(days);
-  const cells = calendarCells(days, month);
-  const monthIndex = months.indexOf(month);
-  const rows =
-    view === 'calendar'
-      ? days.filter((row) => row.date.startsWith(month))
-      : days.slice(Math.max(0, end - length), end);
-  const monthLabel = month
-    ? new Date(`${month}-01T12:00:00Z`).toLocaleDateString('en-GB', {
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      })
-    : '';
-  function changeMonth(delta) {
-    setSelectedMonth(months[monthIndex + delta]);
-    setSelected(null);
-    setAnimation((value) => value + 1);
-  }
-
+  // The garden is the last seven shared days. Days before the first record stay
+  // in it as dotted stems rather than being skipped.
+  const rows = allDays.slice(-7);
   const day = rows.find((row) => row.date === selected) || rows.findLast(hasValue) || rows.at(-1);
   const maxSteps = Math.max(1, ...rows.map((row) => row.steps || 0));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
@@ -318,12 +292,7 @@ export default function PublicApp() {
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
   // One tab stop for the plants: arrow keys move the selection, as in a date grid.
   function moveSelection(event) {
-    const steps = {
-      ArrowLeft: -1,
-      ArrowRight: 1,
-      ArrowUp: view === 'calendar' ? -7 : -1,
-      ArrowDown: view === 'calendar' ? 7 : 1,
-    };
+    const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 };
     const current = rows.findIndex((row) => row.date === day?.date);
     const next =
       event.key === 'Home'
@@ -337,11 +306,6 @@ export default function PublicApp() {
     event.preventDefault();
     setSelected(rows[next].date);
     plot.current?.querySelector(`[data-date="${rows[next].date}"]`)?.focus();
-  }
-  function move(amount) {
-    setOffset((value) => Math.max(0, Math.min(Math.max(0, days.length - length), value + amount)));
-    setSelected(null);
-    setAnimation((value) => value + 1);
   }
   return (
     <div className="app-shell public-health garden-page">
@@ -403,138 +367,34 @@ export default function PublicApp() {
                   <Play size={12} /> Grow again
                 </button>
               </div>
-              <div className="garden-view-switch" role="group" aria-label="Garden layout">
-                {['calendar', 'garden'].map((mode) => (
-                  <button
-                    key={mode}
-                    aria-pressed={view === mode}
-                    onClick={() => {
-                      setView(mode);
-                      setSelected(null);
-                    }}
-                  >
-                    {mode === 'calendar' ? 'Calendar' : 'Garden'}
-                  </button>
-                ))}
-              </div>
-              <div className="garden-toolbar">
-                {view === 'garden' && (
-                  <div className="garden-ranges" role="group" aria-label="Number of days">
-                    {[7, 14, 28].map((value, i, options) => (
-                      <button
-                        key={value}
-                        aria-pressed={length === value}
-                        disabled={i > 0 && options[i - 1] >= days.length && length !== value}
-                        onClick={() => {
-                          setLength(value);
-                          setOffset(0);
-                          setSelected(null);
-                          setAnimation((n) => n + 1);
-                        }}
-                      >
-                        {value} days
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="garden-paging">
-                  <button
-                    aria-label={view === 'calendar' ? 'Previous month' : 'Previous period'}
-                    disabled={
-                      view === 'calendar' ? monthIndex <= 0 : offset + length >= days.length
-                    }
-                    onClick={() => (view === 'calendar' ? changeMonth(-1) : move(length))}
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <span>
-                    {view === 'calendar'
-                      ? monthLabel
-                      : `${date(rows[0].date)} – ${date(rows.at(-1).date)}`}
-                  </span>
-                  <button
-                    aria-label={view === 'calendar' ? 'Next month' : 'Next period'}
-                    disabled={view === 'calendar' ? monthIndex === months.length - 1 : offset === 0}
-                    onClick={() => (view === 'calendar' ? changeMonth(1) : move(-length))}
-                  >
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-              {view === 'calendar' && (
-                <div className="calendar-weekdays" aria-hidden="true">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => (
-                    <span key={label}>{label}</span>
-                  ))}
-                </div>
-              )}
-              <div
-                className={`garden-plot ${view === 'calendar' ? 'calendar-plot' : ''}`}
-                ref={plot}
-              >
+              <p className="garden-range">
+                {date(rows[0].date)} – {date(rows.at(-1).date, true)}
+              </p>
+              <div className="garden-plot" ref={plot}>
                 <div
-                  className={
-                    view === 'calendar'
-                      ? 'calendar-bed'
-                      : `garden-bed ${rows.length <= 7 ? 'seven-days' : ''}`
-                  }
-                  style={
-                    view === 'garden' && rows.length > 7
-                      ? { '--plants': Math.min(rows.length, 14) }
-                      : undefined
-                  }
-                  key={`${view}-${animation}-${rows[0].date}`}
+                  className="garden-bed seven-days"
+                  key={`${animation}-${rows[0].date}`}
                   role="group"
                   aria-label="Days. Use the arrow keys to move between days."
                   onKeyDown={moveSelection}
                 >
-                  {(view === 'calendar' ? cells : rows.map((row) => ({ date: row.date, row }))).map(
-                    (cell, i) => {
-                      if (!cell)
-                        return (
-                          <span key={`pad-${i}`} className="calendar-padding" aria-hidden="true" />
-                        );
-                      const row = cell.row;
-                      if (!row)
-                        return (
-                          <button
-                            key={cell.date}
-                            disabled
-                            className="calendar-unshared"
-                            aria-label={`${date(cell.date, true)}: ${days.length && cell.date < days[0].date ? 'before the first record' : 'not shared yet'}`}
-                          >
-                            <span>{Number(cell.date.slice(-2))}</span>
-                            <span aria-hidden="true">·</span>
-                          </button>
-                        );
-                      return (
-                        <button
-                          className={`garden-day ${row.date === day?.date ? 'selected' : ''}`}
-                          data-date={row.date}
-                          key={row.date}
-                          aria-pressed={row.date === day?.date}
-                          tabIndex={row.date === day?.date ? 0 : -1}
-                          aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
-                          onClick={() => setSelected(row.date)}
-                        >
-                          {view === 'calendar' && (
-                            <span className="calendar-date">{Number(row.date.slice(-2))}</span>
-                          )}
-                          <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
-                          {view === 'garden' && (
-                            <>
-                              <span className="garden-day-number">
-                                {Number(row.date.slice(-2))}
-                              </span>
-                              <span className="garden-day-name">{weekday(row.date)}</span>
-                            </>
-                          )}
-                        </button>
-                      );
-                    },
-                  )}
+                  {rows.map((row, i) => (
+                    <button
+                      className={`garden-day ${row.date === day?.date ? 'selected' : ''}`}
+                      data-date={row.date}
+                      key={row.date}
+                      aria-pressed={row.date === day?.date}
+                      tabIndex={row.date === day?.date ? 0 : -1}
+                      aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
+                      onClick={() => setSelected(row.date)}
+                    >
+                      <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
+                      <span className="garden-day-number">{Number(row.date.slice(-2))}</span>
+                      <span className="garden-day-name">{weekday(row.date)}</span>
+                    </button>
+                  ))}
                 </div>
-                <Moth plot={plot} day={day} maxSteps={maxSteps} animation={animation} view={view} />
+                <Moth plot={plot} day={day} maxSteps={maxSteps} animation={animation} />
               </div>
               <div className="garden-key">
                 <span>
@@ -545,8 +405,8 @@ export default function PublicApp() {
                 </span>
               </div>
               <p className="garden-help">
-                Select a day to see its numbers. Shapes compare days within this view. A dotted stem
-                means no step record. Faded dates have no shared record yet.
+                Select a day to see its numbers. Shapes compare the seven days. A dotted stem means
+                no step record.
               </p>
               {day && (
                 <div className="selected-day-panel" aria-live="polite" aria-atomic="true">
@@ -583,7 +443,7 @@ export default function PublicApp() {
                 <div className="garden-facts">
                   <article>
                     <span className="fact-value">{stepDays.length ? count(totalSteps) : '—'}</span>
-                    <h3>steps in this view</h3>
+                    <h3>steps in these 7 days</h3>
                     <p>
                       {stepDays.length} of {plural(rows.length, 'day')} recorded
                     </p>
@@ -656,8 +516,8 @@ export default function PublicApp() {
             Dates use Hong Kong time.
           </p>
           <p>
-            Blood oxygen, sleep, heart rate, HRV, and breathing rate stay private. Up to 84 days are
-            shown. The garden is a picture of recorded movement, not a health score.
+            Blood oxygen, sleep, heart rate, HRV, and breathing rate stay private. The garden shows
+            the last seven shared days. It is a picture of recorded movement, not a health score.
           </p>
           <a href="https://theoazriel.com/">Back to home</a>
         </footer>
