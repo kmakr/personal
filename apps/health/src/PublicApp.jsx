@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
-import { calendarCells, calendarMonths, defaultMonth } from './garden-calendar.js';
+import { calendarCells, calendarMonths, defaultMonth, seasonWeeks } from './garden-calendar.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -112,6 +112,57 @@ function Butterfly({ plot, day, maxSteps, animation, view }) {
   );
 }
 
+// Weekly totals as one plant per Monday-to-Sunday week. The API leaves a total
+// empty unless all seven days were recorded, so a dotted stem marks a short week.
+function Season({ weeks }) {
+  const maxSteps = Math.max(1, ...weeks.map((week) => week.steps || 0));
+  const maxMinutes = Math.max(1, ...weeks.map((week) => week.zoneMinutes || 0));
+  const best = weeks.reduce(
+    (a, week) => (week.steps != null && (!a || week.steps > a.steps) ? week : a),
+    null,
+  );
+  return (
+    <section className="season" aria-labelledby="season-title">
+      <h2 id="season-title">
+        <Sprout size={18} /> Week by week
+      </h2>
+      <p className="garden-help">
+        Each plant is one Monday-to-Sunday week. Shapes compare weeks with each other.
+      </p>
+      <ol className="season-bed">
+        {weeks.map((week, i) => (
+          <li
+            key={week.start}
+            aria-label={`Week of ${date(week.start, true)}: ${week.steps == null ? 'no complete step total' : `${count(week.steps)} steps`}, ${week.zoneMinutes == null ? 'no complete active minutes total' : `${count(week.zoneMinutes)} active zone minutes`}`}
+          >
+            <Plant row={week} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
+            <span className="season-date" aria-hidden="true">
+              {date(week.start)}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="garden-help">
+        A dotted stem means a day is missing, so the week has no step total. No leaves means no
+        complete active minutes total.
+      </p>
+      {best && (
+        <p className="garden-highlight">
+          <Sprout size={17} />
+          <span>
+            The strongest week:{' '}
+            <strong>
+              {date(best.start)} – {date(best.end)}
+            </strong>
+            , with <strong>{count(best.steps)} steps</strong>, about{' '}
+            {count(Math.round(best.steps / 700) * 100)} a day.
+          </span>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function PublicApp() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -179,6 +230,7 @@ export default function PublicApp() {
   const totalMinutes = minuteDays.reduce((sum, row) => sum + row.zoneMinutes, 0);
   // Each day is shared seven full days after it ends, so day D appears on D + 8.
   const sharedThrough = allDays.at(-1)?.date;
+  const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
   // One tab stop for the plants: arrow keys move the selection, as in a date grid.
   function moveSelection(event) {
@@ -475,6 +527,8 @@ export default function PublicApp() {
                 )}
               </section>
             )}
+            {/* One complete week has nothing to compare against yet. */}
+            {season.length > 1 && <Season weeks={season} />}
             <details className="daily-records">
               <summary>
                 See the daily records <span>{plural(rows.length, 'day')}</span>

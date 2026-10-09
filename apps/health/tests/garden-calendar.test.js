@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calendarCells, calendarMonths, defaultMonth } from '../src/garden-calendar.js';
+import {
+  calendarCells,
+  calendarMonths,
+  defaultMonth,
+  seasonWeeks,
+} from '../src/garden-calendar.js';
 
 test('calendar starts Monday and keeps unshared dates separate from missing records', () => {
   const days = [
@@ -46,4 +51,15 @@ test('calendar drops weeks before the first shared date', () => {
   const cells = calendarCells(days, '2026-09');
   assert.equal(cells.length, 7);
   assert.deepEqual(cells[0], { date: '2026-09-14', row: null });
+});
+test('season starts with the week of the first shared record', () => {
+  const weeks = [
+    { start: '2026-09-07', end: '2026-09-13', steps: null },
+    { start: '2026-09-14', end: '2026-09-20', steps: null },
+    { start: '2026-09-21', end: '2026-09-27', steps: 96077 },
+  ];
+  assert.deepEqual(seasonWeeks(weeks, '2026-09-17'), weeks.slice(1));
+  assert.deepEqual(seasonWeeks(weeks, '2026-09-21'), weeks.slice(2));
+  assert.deepEqual(seasonWeeks(undefined, '2026-09-21'), []);
+  assert.deepEqual(seasonWeeks(weeks, undefined), []);
 });

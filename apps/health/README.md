@@ -132,6 +132,8 @@ The page opens as a Monday-first garden calendar. Each shared date has a selecta
 
 A butterfly moves to the selected plant and perches above its flower, then stops. Selection works with a pointer or keyboard. The plants are one tab stop: the arrow keys move the selection by a day, or by a week in the calendar, and Home and End go to the first and last day. “Grow again” replays the plant animation. System reduced-motion settings disable movement and wing animation. The selected-day panel and expandable table show exact activity values.
 
+Below the garden, “Week by week” draws the API's weekly totals as one plant per Monday-to-Sunday week, starting with the week of the first shared record. A week missing a day has no total and draws a dotted stem. The section stays hidden until there are two weeks to compare.
+
 Blood oxygen is excluded from the public UI, API response, cloud fetch, and stored snapshot. Old cloud snapshots are stripped when loaded. The private local dashboard can still show blood oxygen.
 
 The owner-only sync response reports whether the sync succeeded, whether the policy's history request completed, and the number of stored days per approved metric. These diagnostics do not appear in the public feed.
