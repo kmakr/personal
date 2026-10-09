@@ -1,15 +1,21 @@
 import { addDays, validDate } from '../server/health.js';
 
 export const PUBLIC_POLICY = {
-  version: 4,
+  version: 5,
   metrics: ['steps', 'zoneMinutes'],
+  // Shared only as a whole-number weekly average, never as a daily value.
+  weeklyAverages: ['breathingRate'],
   aggregation: 'daily-and-calendar-week',
   weekStartsOn: 'Monday',
   delayDays: 7,
   timeZone: 'Asia/Hong_Kong',
 };
+// Fetched and kept in private storage. Breathing rate is stored per day only so
+// the weekly average can be worked out; the feed never includes the daily value.
+export const STORED_METRICS = [...PUBLIC_POLICY.metrics, 'respiratoryRate'];
 const numeric = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+const breaths = (value) => (numeric(value) !== null && value >= 4 && value <= 60 ? value : null);
 export function hongKongDate(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: PUBLIC_POLICY.timeZone,
@@ -28,6 +34,7 @@ export function sharedSnapshot(data) {
         date: row.date,
         steps: numeric(row.steps),
         zoneMinutes: numeric(row.zoneMinutes),
+        respiratoryRate: breaths(row.respiratoryRate),
       })),
   };
 }
@@ -53,13 +60,21 @@ export function publicData(data, now = new Date()) {
         ];
       }),
     );
-    return { start, end: addDays(start, 6), ...totals };
+    // An average needs four nights, and is rounded so single nights cannot be recovered.
+    const nights = rows.map((row) => breaths(row?.respiratoryRate)).filter((v) => v !== null);
+    const breathingRate =
+      nights.length >= 4
+        ? Math.round(nights.reduce((sum, value) => sum + value, 0) / nights.length)
+        : null;
+    return { start, end: addDays(start, 6), ...totals, breathingRate };
   });
   // A day must end, then wait seven full days. At Oct 7 midnight, Sep 29 is eligible.
   const dayEndExclusive = addDays(date, -PUBLIC_POLICY.delayDays);
   const days = Array.from({ length: 84 }, (_, index) => {
     const day = addDays(dayEndExclusive, index - 84);
-    return records.get(day) || { date: day, steps: null, zoneMinutes: null };
+    // Build each row from the allowlist, so stored-only fields never leave.
+    const row = records.get(day);
+    return { date: day, steps: row?.steps ?? null, zoneMinutes: row?.zoneMinutes ?? null };
   });
   return { mode: 'live', policy: PUBLIC_POLICY, weeks, days };
 }

@@ -32,13 +32,14 @@ test('publishes approved daily measurements and strips all other personal and me
     end: '2026-09-27',
     steps: 7000,
     zoneMinutes: 70,
+    breathingRate: 14,
   });
   assert.deepEqual(Object.keys(result).sort(), ['days', 'mode', 'policy', 'weeks']);
   assert.deepEqual(
     result.days.find((row) => row.date === '2026-09-21'),
     { date: '2026-09-21', steps: 1000, zoneMinutes: 10 },
   );
-  assert.equal(result.policy.version, 4);
+  assert.equal(result.policy.version, 5);
   for (const field of [
     'private',
     'secret',
@@ -54,7 +55,29 @@ test('publishes approved daily measurements and strips all other personal and me
   for (const row of result.days)
     assert.deepEqual(Object.keys(row).sort(), ['date', 'steps', 'zoneMinutes']);
   for (const row of result.weeks)
-    assert.deepEqual(Object.keys(row).sort(), ['end', 'start', 'steps', 'zoneMinutes']);
+    assert.deepEqual(Object.keys(row).sort(), [
+      'breathingRate',
+      'end',
+      'start',
+      'steps',
+      'zoneMinutes',
+    ]);
+});
+test('breathing rate is public only as a rounded weekly average of at least four nights', () => {
+  const rows = fullWeek('2026-09-21', { respiratoryRate: null });
+  [13.2, 14.1, 15.4].forEach((value, i) => (rows[i].respiratoryRate = value));
+  assert.equal(publicData({ days: rows }, now).weeks.at(-1).breathingRate, null);
+  rows[3].respiratoryRate = 14.6;
+  const result = publicData({ days: rows }, now);
+  // (13.2 + 14.1 + 15.4 + 14.6) / 4 = 14.325
+  assert.equal(result.weeks.at(-1).breathingRate, 14);
+  // Daily rows never carry it, even though it is stored per day.
+  for (const row of result.days)
+    assert.ok(!('respiratoryRate' in row) && !('breathingRate' in row));
+  // Implausible readings are ignored rather than averaged in.
+  rows[4].respiratoryRate = 300;
+  rows[5].respiratoryRate = 2;
+  assert.equal(publicData({ days: rows }, now).weeks.at(-1).breathingRate, 14);
 });
 test('daily disclosure waits seven full days after the day ends at Hong Kong midnight', () => {
   const input = { days: fullWeek('2026-09-28') };
@@ -100,8 +123,8 @@ test('snapshot strips unapproved fields and rejects invalid measurements and dat
     {
       fetchedAt: 'timestamp',
       days: [
-        { date: '2026-09-21', steps: 1, zoneMinutes: 2 },
-        { date: '2026-09-22', steps: null, zoneMinutes: null },
+        { date: '2026-09-21', steps: 1, zoneMinutes: 2, respiratoryRate: null },
+        { date: '2026-09-22', steps: null, zoneMinutes: null, respiratoryRate: null },
       ],
     },
   );

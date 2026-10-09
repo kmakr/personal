@@ -88,7 +88,7 @@ function Plant({ row, maxSteps, maxMinutes, index, wind = null, arriving = false
           {row.steps != null && row.steps > 0 && (
             <g className="plant-flower" transform={`translate(24 ${tip})`}>
               <circle className="plant-head" r="4" />
-              {/* Only the selected day opens into the portal. */}
+              {/* Only the moth's flower opens into the portal. */}
               <g className="plant-portal">
                 <Portal r={5} />
               </g>
@@ -134,7 +134,7 @@ function flightPath(from, to) {
   });
 }
 
-function Moth({ plot, day, maxSteps, animation }) {
+function Moth({ plot, day, maxSteps, animation, breath }) {
   const insect = useRef(null);
   // Where the moth is now, so the next flight starts from it.
   const perch = useRef(null);
@@ -192,7 +192,13 @@ function Moth({ plot, day, maxSteps, animation }) {
   }, [plot, day, maxSteps, animation]);
   if (!day) return null;
   return (
-    <span ref={insect} className="garden-moth" aria-hidden="true">
+    <span
+      ref={insect}
+      className="garden-moth"
+      aria-hidden="true"
+      // One wing breath per real breath: 15 breaths a minute is a 4 second cycle.
+      style={breath ? { '--breath': `${60 / breath}s` } : undefined}
+    >
       {/* Each wing is a small portal, so the moth reads as made of the same ink. */}
       <svg viewBox="0 0 32 28">
         <g className="moth-sway">
@@ -267,7 +273,6 @@ export default function PublicApp() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
-  const [selected, setSelected] = useState(null);
   const plot = useRef(null);
   const [animation, setAnimation] = useState(0);
   // The day that most recently became public while the page was open.
@@ -283,7 +288,9 @@ export default function PublicApp() {
       const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
       if (!response.ok) throw new Error('The activity page could not load.');
       const next = await response.json();
-      if (next.policy?.version !== 4 || !Array.isArray(next.days))
+      // Version 4 lacks the weekly breathing rate. The edge cache can still serve it
+      // for five minutes after a deploy, so accept both.
+      if (![4, 5].includes(next.policy?.version) || !Array.isArray(next.days))
         throw new Error('The activity page could not load.');
       const added = arrivals(shown.current?.days, next.days);
       if (added.length) setArriving(added.at(-1));
@@ -324,7 +331,8 @@ export default function PublicApp() {
   // The garden is the last seven shared days. Days before the first record stay
   // in it as dotted stems rather than being skipped.
   const rows = allDays.slice(-7);
-  const day = rows.find((row) => row.date === selected) || rows.findLast(hasValue) || rows.at(-1);
+  // The moth rests on the newest recorded day; the plants are not selectable.
+  const day = rows.findLast(hasValue) || rows.at(-1);
   const maxSteps = Math.max(1, ...rows.map((row) => row.steps || 0));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
   const stepDays = rows.filter((row) => row.steps != null);
@@ -335,24 +343,9 @@ export default function PublicApp() {
   const sharedThrough = allDays.at(-1)?.date;
   const trend = trendSentence(stepTrend(allDays));
   const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
+  // The moth breathes at the newest weekly average breathing rate, if one is public.
+  const breathWeek = data?.weeks?.findLast((week) => week.breathingRate != null);
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
-  // One tab stop for the plants: arrow keys move the selection, as in a date grid.
-  function moveSelection(event) {
-    const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 };
-    const current = rows.findIndex((row) => row.date === day?.date);
-    const next =
-      event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? rows.length - 1
-          : event.key in steps
-            ? current + steps[event.key]
-            : null;
-    if (next === null || !rows[next]) return;
-    event.preventDefault();
-    setSelected(rows[next].date);
-    plot.current?.querySelector(`[data-date="${rows[next].date}"]`)?.focus();
-  }
   return (
     <div className="app-shell public-health garden-page">
       <svg className="ink-defs" aria-hidden="true" focusable="false">
@@ -417,24 +410,19 @@ export default function PublicApp() {
                 {date(rows[0].date)} – {date(rows.at(-1).date, true)}
               </p>
               <div className="garden-plot" ref={plot}>
-                <div
+                <ol
                   className="garden-bed seven-days"
                   // Only "Grow again" replays every plant. A day arriving at
                   // midnight mounts just its own plant; the rest stay grown.
                   key={animation}
-                  role="group"
-                  aria-label="Days. Use the arrow keys to move between days."
-                  onKeyDown={moveSelection}
+                  aria-label="The last seven shared days"
                 >
                   {rows.map((row, i) => (
-                    <button
-                      className={`garden-day ${row.date === day?.date ? 'selected' : ''}`}
+                    <li
+                      className={`garden-day ${row.date === day?.date ? 'visited' : ''}`}
                       data-date={row.date}
                       key={row.date}
-                      aria-pressed={row.date === day?.date}
-                      tabIndex={row.date === day?.date ? 0 : -1}
                       aria-label={`${date(row.date, true)}: ${row.steps == null ? 'steps unavailable' : `${count(row.steps)} steps`}, ${row.zoneMinutes == null ? 'active minutes unavailable' : `${count(row.zoneMinutes)} active zone minutes`}`}
-                      onClick={() => setSelected(row.date)}
                     >
                       <Plant
                         row={row}
@@ -446,10 +434,16 @@ export default function PublicApp() {
                       />
                       <span className="garden-day-number">{Number(row.date.slice(-2))}</span>
                       <span className="garden-day-name">{weekday(row.date)}</span>
-                    </button>
+                    </li>
                   ))}
-                </div>
-                <Moth plot={plot} day={day} maxSteps={maxSteps} animation={animation} />
+                </ol>
+                <Moth
+                  plot={plot}
+                  day={day}
+                  maxSteps={maxSteps}
+                  animation={animation}
+                  breath={breathWeek?.breathingRate}
+                />
               </div>
               <div className="garden-key">
                 <span>
@@ -460,9 +454,15 @@ export default function PublicApp() {
                 </span>
               </div>
               <p className="garden-help">
-                Select a day to see its numbers. Shapes compare the seven days. Plants sway more on
-                days with more active minutes. A dotted stem means no step record.
+                Shapes compare the seven days. Plants sway more on days with more active minutes. A
+                dotted stem means no step record. The moth rests on the newest day.
               </p>
+              {breathWeek && (
+                <p className="garden-help">
+                  The moth breathes at my average breathing rate for the week of{' '}
+                  {date(breathWeek.start)}: {breathWeek.breathingRate} breaths a minute.
+                </p>
+              )}
               {day && (
                 <div className="selected-day-panel" aria-live="polite" aria-atomic="true">
                   <div className="selected-day-heading">
@@ -567,12 +567,14 @@ export default function PublicApp() {
         )}
         <footer className="public-footer">
           <p>
-            Public: daily steps and active zone minutes. Each day appears after seven full days.
-            Dates use Hong Kong time.
+            Public: daily steps and active zone minutes, and my breathing rate as one whole-number
+            average per complete week. Each day appears after seven full days. Dates use Hong Kong
+            time.
           </p>
           <p>
-            Blood oxygen, sleep, heart rate, HRV, and breathing rate stay private. The garden shows
-            the last seven shared days. It is a picture of recorded movement, not a health score.
+            Blood oxygen, sleep, heart rate, HRV, and daily breathing rates stay private. The garden
+            shows the last seven shared days. It is a picture of recorded movement, not a health
+            score.
           </p>
           <a href="https://theoazriel.com/">Back to home</a>
         </footer>

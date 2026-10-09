@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { fetchHealth, SCOPES } from '../server/health.js';
 import {
   PUBLIC_POLICY,
+  STORED_METRICS,
   sharedSnapshot,
   readPublicData,
   hongKongDate,
@@ -173,7 +174,7 @@ export class HealthFeed extends DurableObject {
           (await this.ctx.storage.get('historyBackfilled')) === PUBLIC_POLICY.version,
         ...(error ? { error } : {}),
         recordedDays: Object.fromEntries(
-          PUBLIC_POLICY.metrics.map((metric) => [
+          STORED_METRICS.map((metric) => [
             metric,
             (snapshot?.days || []).filter((row) => row[metric] != null).length,
           ]),
@@ -220,7 +221,7 @@ export class HealthFeed extends DurableObject {
           ).values(),
         ];
         await this.ctx.storage.put('syncWarnings', warnings);
-        if (batches.every((batch) => batch.warnings.length === PUBLIC_POLICY.metrics.length)) {
+        if (batches.every((batch) => batch.warnings.length === STORED_METRICS.length)) {
           await this.ctx.storage.put(
             'lastError',
             'The last update failed. Previously loaded values remain visible.',

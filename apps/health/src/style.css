@@ -1007,7 +1007,6 @@ dialog::backdrop {
   --ink: #141414;
   --ink-faint: #b3b3b0;
   --ink-rim: #9d9c97;
-  --wash: #f0f0ee;
   --wash-hover: #f7f7f6;
 }
 .garden-intro {
@@ -1068,6 +1067,8 @@ dialog::backdrop {
   font-size: var(--text-caption);
 }
 .garden-bed {
+  list-style: none;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(var(--plants, 14), minmax(0, 1fr));
   align-items: end;
@@ -1083,19 +1084,6 @@ dialog::backdrop {
   align-items: center;
   min-width: 0;
   padding: 0.4rem 0 0.6rem;
-  border-radius: var(--radius-lg);
-  transition: background 0.15s;
-}
-.garden-day:hover {
-  background: var(--wash-hover);
-  color: #141414;
-}
-.garden-day.selected {
-  background: var(--wash);
-}
-.garden-day:focus-visible {
-  outline: 1px solid var(--ink);
-  outline-offset: 1px;
 }
 .garden-plant {
   width: 100%;
@@ -1145,7 +1133,7 @@ dialog::backdrop {
     opacity 0.3s,
     transform 0.3s;
 }
-.garden-day.selected .plant-portal {
+.garden-day.visited .plant-portal {
   opacity: 1;
   transform: scale(1.25);
 }
@@ -1167,7 +1155,7 @@ dialog::backdrop {
   transform-origin: 24px 134px;
   animation: plant-sway var(--sway-time) ease-in-out var(--sway-delay) infinite alternate;
 }
-.garden-day.selected .plant-sway {
+.garden-day.visited .plant-sway {
   --calm: 0.25;
 }
 @keyframes plant-sway {
@@ -1501,7 +1489,7 @@ dialog::backdrop {
 .garden-moth[data-state='landed'] .moth-wing {
   animation:
     moth-settle 0.22s ease-in-out 3 alternate,
-    moth-breathe 3.4s ease-in-out 0.7s infinite;
+    moth-breathe var(--breath, 3.4s) ease-in-out 0.7s infinite;
 }
 .garden-moth[data-state='landed'] .moth-sway {
   transform-origin: 16px 23px;
