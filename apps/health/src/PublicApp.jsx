@@ -2,17 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
 import { calendarCells, calendarMonths } from './garden-calendar.js';
+import { count, shortDate as date, weekday } from './format.js';
+import SiteHeader from './SiteHeader.jsx';
 
-const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
-const date = (value, long = false) =>
-  new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    ...(long ? { year: 'numeric' } : {}),
-    timeZone: 'UTC',
-  });
-const weekday = (value) =>
-  new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
 const hasValue = (row) => row && [row.steps, row.zoneMinutes].some((value) => value != null);
 
 function Plant({ row, maxSteps, maxMinutes, index }) {
@@ -135,7 +127,6 @@ export default function PublicApp() {
     }
   }
   useEffect(() => {
-    document.title = 'Health | Theo Azriel';
     load();
   }, []);
   // The garden starts on the first recorded day, so empty history does not fill the view.
@@ -201,15 +192,7 @@ export default function PublicApp() {
   }
   return (
     <div className="app-shell public-health garden-page">
-      <header className="site-header">
-        <a className="title" href="https://theoazriel.com/" aria-label="Theo Azriel home">
-          <ink-mark class="site-mark" aria-hidden="true" data-ink-state="static">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="96" height="96" />
-            <canvas width="192" height="192" />
-          </ink-mark>
-          <span>Theo Azriel</span>
-        </a>
-      </header>
+      <SiteHeader />
       <main>
         <div className="page-heading">
           <div>
@@ -366,7 +349,12 @@ export default function PublicApp() {
                           {view === 'calendar' && (
                             <span className="calendar-date">{Number(row.date.slice(-2))}</span>
                           )}
-                          <Plant row={row} maxSteps={maxSteps} maxMinutes={maxMinutes} index={i} />
+                          <Plant
+                            row={row}
+                            maxSteps={maxSteps}
+                            maxMinutes={maxMinutes}
+                            index={rows.indexOf(row)}
+                          />
                           {view === 'garden' && (
                             <>
                               <span className="garden-day-number">

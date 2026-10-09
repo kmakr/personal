@@ -311,6 +311,10 @@ svg {
   color: var(--muted);
   margin-top: 5px;
 }
+.metric-name svg,
+.spark {
+  color: #242424;
+}
 .spark {
   width: 70px;
   height: 32px;
@@ -498,6 +502,7 @@ svg {
 }
 .bar {
   width: 100%;
+  background: #242424;
   opacity: 0.14;
   border-radius: 2px 2px 0 0;
   transition: opacity 120ms ease;
@@ -551,6 +556,7 @@ svg {
   gap: 6px;
 }
 .chart-caption i {
+  background: #242424;
   width: 5px;
   height: 5px;
   display: inline-block;

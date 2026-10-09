@@ -17,15 +17,9 @@ import {
   Zap,
 } from 'lucide-react';
 import { demoData, localDate } from './demo';
+import { count as format, dayDate, duration, shortDate as dateLabel } from './format.js';
+import SiteHeader from './SiteHeader.jsx';
 
-const format = (v) => (v == null ? '—' : Math.round(v).toLocaleString());
-const duration = (v) =>
-  v == null ? '—' : `${Math.floor(Math.round(v) / 60)}h ${Math.round(v) % 60}m`;
-const dateLabel = (s) =>
-  new Date(`${s}T12:00:00`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  });
 const mean = (rows, key) => {
   const v = rows.map((r) => r[key]).filter((v) => v != null);
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
@@ -46,7 +40,7 @@ async function api(url, body) {
   if (!res.ok) throw new Error(data.error || 'Request failed.');
   return data;
 }
-function Spark({ values, color = '#242424' }) {
+function Spark({ values }) {
   const valid = values.filter((v) => v != null);
   if (!valid.length) return <div className="spark empty-spark">No data</div>;
   const low = Math.min(...valid) - 3,
@@ -71,7 +65,7 @@ function Spark({ values, color = '#242424' }) {
           key={i}
           points={p}
           fill="none"
-          stroke={color}
+          stroke="currentColor"
           strokeWidth="2.3"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -80,11 +74,11 @@ function Spark({ values, color = '#242424' }) {
     </svg>
   );
 }
-function Metric({ icon: Icon, title, value, unit, values, color, note }) {
+function Metric({ icon: Icon, title, value, unit, values, note }) {
   return (
     <article className="metric">
       <div className="metric-name">
-        <Icon size={17} style={{ color }} />
+        <Icon size={17} />
         {title}
       </div>
       <div className="metric-body">
@@ -92,7 +86,7 @@ function Metric({ icon: Icon, title, value, unit, values, color, note }) {
           <strong>{value}</strong>
           <span>{unit}</span>
         </div>
-        <Spark values={values} color={color} />
+        <Spark values={values} />
       </div>
       <p>{note}</p>
     </article>
@@ -416,13 +410,9 @@ export default function App() {
   const rows = data?.days || [];
   const day = rows.find((r) => r.date === selected) || {};
   const details = {
-    steps: { label: 'Steps', unit: 'steps', color: '#242424' },
-    sleepMinutes: { label: 'Sleep', unit: 'hours', color: '#242424' },
-    restingHeartRate: {
-      label: 'Resting heart rate',
-      unit: 'bpm',
-      color: '#242424',
-    },
+    steps: { label: 'Steps', unit: 'steps' },
+    sleepMinutes: { label: 'Sleep', unit: 'hours' },
+    restingHeartRate: { label: 'Resting heart rate', unit: 'bpm' },
   };
   const chartKey =
     view === 'Sleep' ? 'sleepMinutes' : view === 'Heart health' ? 'restingHeartRate' : metric;
@@ -484,15 +474,7 @@ export default function App() {
   }
   return (
     <div className="app-shell">
-      <header className="site-header">
-        <a className="title" href="https://theoazriel.com/" aria-label="Theo Azriel home">
-          <ink-mark class="site-mark" aria-hidden="true" data-ink-state="static">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="96" height="96" />
-            <canvas width="192" height="192" />
-          </ink-mark>
-          <span>Theo Azriel</span>
-        </a>
-      </header>
+      <SiteHeader />
       <div className="main-shell">
         <main>
           <div className="page-heading">
@@ -607,7 +589,7 @@ export default function App() {
             <div className="period-title">
               <h2>{selected === localDate() ? 'Today' : `${dateLabel(selected)} daily record`}</h2>
               <span>
-                {new Date(`${selected}T12:00:00`).toLocaleDateString('en-GB', {
+                {dayDate(selected, {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
@@ -645,7 +627,6 @@ export default function App() {
               value={format(day.steps)}
               unit="steps"
               values={rows.map((r) => r.steps)}
-              color="#242424"
               note="Daily movement"
             />
             <Metric
@@ -654,7 +635,6 @@ export default function App() {
               value={duration(day.sleepMinutes)}
               unit=""
               values={rows.map((r) => r.sleepMinutes)}
-              color="#242424"
               note="All sleep sessions for this date"
             />
             <Metric
@@ -663,7 +643,6 @@ export default function App() {
               value={format(day.restingHeartRate)}
               unit="bpm"
               values={rows.map((r) => r.restingHeartRate)}
-              color="#242424"
               note="Daily resting measurement"
             />
             <Metric
@@ -672,7 +651,6 @@ export default function App() {
               value={format(day.zoneMinutes)}
               unit="min"
               values={rows.map((r) => r.zoneMinutes)}
-              color="#242424"
               note="Intensity-weighted activity"
             />
           </section>
@@ -787,16 +765,15 @@ export default function App() {
                                 r[chartKey] == null
                                   ? '3px'
                                   : `${Math.max(1, (r[chartKey] / max) * 100)}%`,
-                              background: chart.color,
                             }}
                           />
                         </span>
                         <span className="bar-label">
                           {days === 7
-                            ? new Date(`${r.date}T12:00:00`).toLocaleDateString('en-GB', {
+                            ? dayDate(r.date, {
                                 weekday: 'short',
                               })
-                            : new Date(`${r.date}T12:00:00`).getDate()}
+                            : Number(r.date.slice(-2))}
                         </span>
                       </button>
                     ))}
@@ -810,7 +787,7 @@ export default function App() {
               </div>
               <div className="chart-caption">
                 <span>
-                  <i style={{ background: chart.color }} />
+                  <i />
                   {chart.label}
                 </span>
                 <span>Select a day to view its records</span>
@@ -845,22 +822,18 @@ export default function App() {
               </div>
               <p className="panel-description">Measurements from the selected date.</p>
               {[
-                [Heart, 'Heart rate variability', 'hrv', 'ms', '#242424'],
-                [Wind, 'Breathing rate', 'respiratoryRate', 'breaths/min', '#242424'],
-                [Activity, 'Blood oxygen', 'oxygen', '%', '#242424'],
-              ].map(([Icon, label, key, unit, color]) => (
+                [Heart, 'Heart rate variability', 'hrv', 'ms'],
+                [Wind, 'Breathing rate', 'respiratoryRate', 'breaths/min'],
+                [Activity, 'Blood oxygen', 'oxygen', '%'],
+              ].map(([Icon, label, key, unit]) => (
                 <div className="vital" key={key}>
-                  <span className="vital-icon" style={{ color }}>
+                  <span className="vital-icon">
                     <Icon size={18} />
                   </span>
                   <div>
                     <b>{label}</b>
                     <span>
-                      {key === 'hrv'
-                        ? 'Average during sleep'
-                        : key === 'oxygen'
-                          ? 'Average during sleep'
-                          : 'Main sleep average'}
+                      {key === 'respiratoryRate' ? 'Main sleep average' : 'Average during sleep'}
                     </span>
                   </div>
                   <strong>
