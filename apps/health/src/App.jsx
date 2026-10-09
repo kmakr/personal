@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { demoData, localDate } from './demo';
 
-const PUBLIC = import.meta.env.VITE_PUBLIC_DASHBOARD === 'true';
 const format = (v) => (v == null ? '—' : Math.round(v).toLocaleString());
 const duration = (v) =>
   v == null ? '—' : `${Math.floor(Math.round(v) / 60)}h ${Math.round(v) % 60}m`;
@@ -33,7 +32,7 @@ const mean = (rows, key) => {
 };
 async function api(url, body) {
   const res = await fetch(
-    PUBLIC ? `/health${url}` : url,
+    url,
     body === undefined
       ? {}
       : {
@@ -42,7 +41,8 @@ async function api(url, body) {
           body: JSON.stringify(body),
         },
   );
-  const data = await res.json();
+  // An HTML error page from a proxy or a crashed server is not JSON.
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Request failed.');
   return data;
 }
@@ -352,7 +352,7 @@ function Setup({ status, onClose, onStatus }) {
 }
 export default function App() {
   const [status, setStatus] = useState(null),
-    [mode, setMode] = useState(PUBLIC ? 'live' : 'demo'),
+    [mode, setMode] = useState('demo'),
     [data, setData] = useState(null),
     [days, setDays] = useState(7),
     [end, setEnd] = useState(localDate()),
@@ -375,7 +375,6 @@ export default function App() {
     return s;
   }
   useEffect(() => {
-    if (PUBLIC) document.title = 'Theo’s health | Theo Azriel';
     getStatus()
       .then((s) => {
         if (s.connected) setMode('live');
@@ -393,7 +392,11 @@ export default function App() {
           mode === 'demo'
             ? demoData(end, days)
             : await api(`/api/dashboard?end=${end}&days=${days}${refresh ? '&refresh=1' : ''}`);
-        if (request.current === id) setData(next);
+        if (request.current === id) {
+          setData(next);
+          // Keep a sign-in error visible for the first load only.
+          authIssue.current = false;
+        }
       } catch (e) {
         if (request.current === id) {
           setData(null);
@@ -525,7 +528,7 @@ export default function App() {
               </button>
             ))}
           </nav>
-          {!PUBLIC && mode === 'demo' && (
+          {mode === 'demo' && (
             <div className="connect-banner">
               <span className="banner-icon">
                 <Link2 size={20} />
@@ -543,7 +546,7 @@ export default function App() {
               </button>
             </div>
           )}
-          {!PUBLIC && status?.publicPublishing && (
+          {status?.publicPublishing && (
             <div className="connect-banner">
               <span className="banner-icon">
                 <ArrowUpRight size={20} />
@@ -561,12 +564,6 @@ export default function App() {
               <button className="secondary" disabled={busy} onClick={unpublish}>
                 Remove public data
               </button>
-            </div>
-          )}
-          {PUBLIC && (data?.stale || data?.updateMessage) && (
-            <div className="message" role="status">
-              {data.updateMessage || 'This data is more than two hours old.'} Last update:{' '}
-              {new Date(data.fetchedAt).toLocaleString('en-GB')}.
             </div>
           )}
           {error && (
@@ -627,7 +624,8 @@ export default function App() {
                 value={end}
                 max={localDate()}
                 onChange={(e) => {
-                  if (e.target.value) setEnd(e.target.value);
+                  // The max attribute limits the picker, not typed dates.
+                  if (e.target.value && e.target.value <= localDate()) setEnd(e.target.value);
                 }}
               />
               <button
@@ -835,7 +833,7 @@ export default function App() {
                       : Number(day.sleep.summary.minutesAsleep),
                   )}
                 </strong>
-                <span>time asleep</span>
+                <span>main session asleep</span>
               </div>
               <SleepChart sleep={day.sleep} />
             </section>
@@ -884,18 +882,14 @@ export default function App() {
                 : `Google Health · ${data?.fetchedAt ? `Fetched at ${new Date(data.fetchedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for data'}`}
             </span>
             <div>
-              {!PUBLIC && <button onClick={() => setSetup(true)}>Connection settings</button>}
-              {!PUBLIC && mode === 'live' && (
-                <button onClick={disconnect}>Disconnect account</button>
-              )}
+              <button onClick={() => setSetup(true)}>Connection settings</button>
+              {mode === 'live' && <button onClick={disconnect}>Disconnect account</button>}
               <a href="https://theoazriel.com/">Back to home</a>
             </div>
           </footer>
         </main>
       </div>
-      {!PUBLIC && setup && (
-        <Setup status={status} onClose={() => setSetup(false)} onStatus={getStatus} />
-      )}
+      {setup && <Setup status={status} onClose={() => setSetup(false)} onStatus={getStatus} />}
     </div>
   );
 }

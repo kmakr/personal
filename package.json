@@ -25,7 +25,7 @@
     "dev:health": "npm run dev --workspace @theo/health",
     "build:health": "npm run build --workspace @theo/health",
     "build:health:public": "npm run build:public --workspace @theo/health",
-    "test:health": "npm test --workspace @theo/health",
+    "test:health": "npm run build:health && npm test --workspace @theo/health",
     "deploy:health": "npm run deploy --workspace @theo/health",
     "check:health": "npm run build:health:public && npm run test:health && npm run check:worker --workspace @theo/health"
   },
