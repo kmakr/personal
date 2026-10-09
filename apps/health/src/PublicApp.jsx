@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
-import { calendarCells, calendarMonths } from './garden-calendar.js';
+import { calendarCells, calendarMonths, defaultMonth } from './garden-calendar.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -13,6 +13,12 @@ const date = (value, long = false) =>
   });
 const weekday = (value) =>
   new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+const plural = (value, word) => `${value} ${word}${value === 1 ? '' : 's'}`;
+const addDays = (value, amount) => {
+  const next = new Date(`${value}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + amount);
+  return next.toISOString().slice(0, 10);
+};
 const hasValue = (row) => row && [row.steps, row.zoneMinutes].some((value) => value != null);
 
 function Plant({ row, maxSteps, maxMinutes, index }) {
@@ -121,12 +127,12 @@ export default function PublicApp() {
     setBusy(true);
     setError('');
     try {
-      // The feed may be up to five minutes old. Refresh skips the browser copy.
+      // The feed may be up to five minutes old. A retry skips the browser copy.
       const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
-      if (!response.ok) throw new Error('The activity page could not load. Try Refresh.');
+      if (!response.ok) throw new Error('The activity page could not load.');
       const next = await response.json();
       if (next.policy?.version !== 4 || !Array.isArray(next.days))
-        throw new Error('The activity page could not load. Try Refresh.');
+        throw new Error('The activity page could not load.');
       setData(next);
     } catch (e) {
       setError(e.message);
@@ -144,7 +150,7 @@ export default function PublicApp() {
   const days = firstRecord > 0 ? allDays.slice(firstRecord) : allDays;
   const end = Math.max(0, days.length - offset);
   const months = calendarMonths(days);
-  const month = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
+  const month = months.includes(selectedMonth) ? selectedMonth : defaultMonth(days);
   const cells = calendarCells(days, month);
   const monthIndex = months.indexOf(month);
   const rows =
@@ -171,6 +177,8 @@ export default function PublicApp() {
   const minuteDays = rows.filter((row) => row.zoneMinutes != null);
   const totalSteps = stepDays.reduce((sum, row) => sum + row.steps, 0);
   const totalMinutes = minuteDays.reduce((sum, row) => sum + row.zoneMinutes, 0);
+  // Each day is shared seven full days after it ends, so day D appears on D + 8.
+  const sharedThrough = allDays.at(-1)?.date;
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
   // One tab stop for the plants: arrow keys move the selection, as in a date grid.
   function moveSelection(event) {
@@ -211,29 +219,29 @@ export default function PublicApp() {
         </a>
       </header>
       <main>
-        <div className="page-heading">
-          <div>
-            <h1>Health</h1>
-            <p>Small days. A growing picture.</p>
-          </div>
-          <button
-            className="secondary sync"
-            disabled={busy}
-            onClick={() => load(true)}
-            aria-label="Refresh health data"
-          >
-            <RefreshCw size={15} className={busy ? 'spin' : ''} />
-            <span>{busy ? 'Loading…' : 'Refresh'}</span>
-          </button>
-        </div>
+        <h1>Health</h1>
         <p className="garden-intro">
           A garden of my daily movement, with a little room to breathe. Real Fitbit records, shared
           seven days later.
         </p>
+        {sharedThrough && (
+          <p className="garden-status">
+            Shared through {date(sharedThrough, true)}. {date(addDays(sharedThrough, 1))} appears on{' '}
+            {date(addDays(sharedThrough, 9))}.
+          </p>
+        )}
         {error && (
           <p className="message error" role="alert">
-            {error}
+            {error}{' '}
+            <button className="retry" disabled={busy} onClick={() => load(true)}>
+              <RefreshCw size={13} className={busy ? 'spin' : ''} /> Try again
+            </button>
           </p>
+        )}
+        {busy && !data && (
+          <div className="garden-loading" aria-busy="true">
+            <p>Loading the garden…</p>
+          </div>
         )}
         {rows.length > 0 && (
           <>
@@ -428,45 +436,48 @@ export default function PublicApp() {
                 </div>
               )}
             </section>
-            <section className="garden-summary" aria-label="Period summary">
-              <h2>A few things this garden says</h2>
-              <div className="garden-facts">
-                <article>
-                  <span className="fact-value">{stepDays.length ? count(totalSteps) : '—'}</span>
-                  <h3>steps in this view</h3>
-                  <p>
-                    {stepDays.length} of {rows.length} days recorded
+            {/* With one recorded day the selected-day panel already says all of this. */}
+            {(stepDays.length > 1 || minuteDays.length > 1) && (
+              <section className="garden-summary" aria-label="Period summary">
+                <h2>A few things this garden says</h2>
+                <div className="garden-facts">
+                  <article>
+                    <span className="fact-value">{stepDays.length ? count(totalSteps) : '—'}</span>
+                    <h3>steps in this view</h3>
+                    <p>
+                      {stepDays.length} of {plural(rows.length, 'day')} recorded
+                    </p>
+                  </article>
+                  <article>
+                    <span className="fact-value">
+                      {minuteDays.length ? count(totalMinutes) : '—'}
+                      <small> min</small>
+                    </span>
+                    <h3>active zone minutes</h3>
+                    <p>
+                      {minuteDays.length} of {plural(rows.length, 'day')} recorded
+                    </p>
+                  </article>
+                </div>
+                {best && (
+                  <p className="garden-highlight">
+                    <Sprout size={17} />
+                    <span>
+                      The tallest stem: <strong>{date(best.date)}</strong>, with{' '}
+                      <strong>{count(best.steps)} steps</strong>.
+                    </span>
                   </p>
-                </article>
-                <article>
-                  <span className="fact-value">
-                    {minuteDays.length ? count(totalMinutes) : '—'}
-                    <small> min</small>
-                  </span>
-                  <h3>active zone minutes</h3>
-                  <p>
-                    {minuteDays.length} of {rows.length} days recorded
+                )}
+                {(stepDays.length < rows.length || minuteDays.length < rows.length) && (
+                  <p className="garden-help">
+                    These sums include recorded days only. Missing days are not counted as zero.
                   </p>
-                </article>
-              </div>
-              {best && (
-                <p className="garden-highlight">
-                  <Sprout size={17} />
-                  <span>
-                    The tallest stem: <strong>{date(best.date)}</strong>, with{' '}
-                    <strong>{count(best.steps)} steps</strong>.
-                  </span>
-                </p>
-              )}
-              {(stepDays.length < rows.length || minuteDays.length < rows.length) && (
-                <p className="garden-help">
-                  These sums include recorded days only. Missing days are not counted as zero.
-                </p>
-              )}
-            </section>
+                )}
+              </section>
+            )}
             <details className="daily-records">
               <summary>
-                See the daily records <span>{rows.length} days</span>
+                See the daily records <span>{plural(rows.length, 'day')}</span>
               </summary>
               <div className="daily-table-wrap">
                 <table>
@@ -506,7 +517,7 @@ export default function PublicApp() {
             Blood oxygen, sleep, heart rate, HRV, and breathing rate stay private. Up to 84 days are
             shown. The garden is a picture of recorded movement, not a health score.
           </p>
-          <a href="https://theoazriel.com/">Back to home ↗</a>
+          <a href="https://theoazriel.com/">Back to home</a>
         </footer>
       </main>
     </div>

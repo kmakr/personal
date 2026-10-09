@@ -1,6 +1,14 @@
 export function calendarMonths(days) {
   return [...new Set(days.map((row) => row.date.slice(0, 7)))];
 }
+// Open on the newest month with a week of shared days, so a new month does not
+// open as one plant beside empty weeks.
+export function defaultMonth(days) {
+  const months = calendarMonths(days);
+  const latest = months.at(-1);
+  const shared = days.filter((row) => row.date.startsWith(latest)).length;
+  return shared < 7 && months.length > 1 ? months.at(-2) : latest;
+}
 export function calendarCells(days, month) {
   if (!/^\d{4}-\d{2}$/.test(month || '')) return [];
   const [year, number] = month.split('-').map(Number);
@@ -15,5 +23,13 @@ export function calendarCells(days, month) {
     cells.push({ date, row: records.get(date) || null });
   }
   while (cells.length % 7) cells.push(null);
+  // Drop whole weeks before the first or after the last shared date; they would
+  // hold only placeholders.
+  const firstDate = days[0]?.date;
+  const last = days.at(-1)?.date;
+  const outside = (week) =>
+    week.every((cell) => !cell || cell.date < firstDate || cell.date > last);
+  while (last && cells.length > 7 && outside(cells.slice(0, 7))) cells.splice(0, 7);
+  while (last && cells.length > 7 && outside(cells.slice(-7))) cells.splice(-7);
   return cells;
 }

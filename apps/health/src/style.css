@@ -9,8 +9,13 @@
   background: #fff;
   font-synthesis: none;
   --muted: #6f6f6f;
-  --label: #777;
+  --label: #8a8a8a;
   --rule: #e4e4e4;
+  /* Three text sizes and two corner radii keep the garden on the site's scale. */
+  --text-small: 0.875rem;
+  --text-caption: 0.75rem;
+  --radius: 4px;
+  --radius-lg: 10px;
 }
 * {
   box-sizing: border-box;
@@ -66,7 +71,7 @@ h2,
 h3 {
   font-size: 1rem;
   line-height: 1.65;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
 }
 svg {
@@ -91,9 +96,10 @@ svg {
 .site-mark {
   display: block;
   position: relative;
-  width: 96px;
-  height: 96px;
-  margin-left: -12px;
+  width: 56px;
+  height: 56px;
+  /* Optically align the round edge with the name, as on theoazriel.com. */
+  margin-left: -6px;
 }
 .site-mark img,
 .site-mark canvas {
@@ -118,9 +124,6 @@ svg {
   align-items: baseline;
   justify-content: space-between;
   gap: 1.5rem;
-}
-.page-heading h1 {
-  font-weight: 500;
 }
 .page-heading p {
   color: var(--muted);
@@ -1006,7 +1009,26 @@ dialog::backdrop {
 .garden-intro {
   color: var(--muted);
   max-width: 31rem;
-  margin: 1.5rem 0 2.5rem;
+  margin-top: 0.5rem;
+}
+.garden-status {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  margin: 0.75rem 0 2.5rem;
+}
+.retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  color: #141414;
+  font-size: inherit;
+}
+.garden-loading {
+  /* Hold roughly a month's height so the page does not jump when data arrives. */
+  min-height: 46rem;
+  color: var(--muted);
+  font-size: var(--text-small);
 }
 .garden-heading,
 .garden-toolbar,
@@ -1028,7 +1050,7 @@ dialog::backdrop {
 }
 .garden-replay {
   gap: 0.4rem;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   padding: 0.5rem 0 0.5rem 0.5rem;
 }
@@ -1045,13 +1067,13 @@ dialog::backdrop {
   display: flex;
   gap: 0.2rem;
   background: #f3f3f1;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   padding: 3px;
 }
 .garden-ranges button {
   padding: 0.25rem 0.7rem;
-  font-size: 0.75rem;
-  border-radius: 18px;
+  font-size: var(--text-caption);
+  border-radius: calc(var(--radius-lg) - 3px);
 }
 .garden-ranges button[aria-pressed='true'] {
   background: #fff;
@@ -1059,7 +1081,7 @@ dialog::backdrop {
 }
 .garden-paging {
   gap: 0.4rem;
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
 }
 .garden-paging button {
   display: grid;
@@ -1082,7 +1104,7 @@ dialog::backdrop {
   align-items: center;
   min-width: 0;
   padding: 0.4rem 0 0.6rem;
-  border-radius: 28px 28px 8px 8px;
+  border-radius: var(--radius-lg);
   transition: background 0.15s;
 }
 .garden-day:hover {
@@ -1147,12 +1169,12 @@ dialog::backdrop {
   }
 }
 .garden-day-number {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
 .garden-day-name {
-  font-size: 0.6rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .garden-key {
@@ -1161,7 +1183,7 @@ dialog::backdrop {
   gap: 0.6rem 1.3rem;
   padding-top: 1rem;
   border-top: 1px solid var(--rule);
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
 }
 .garden-key > span {
   display: flex;
@@ -1181,7 +1203,7 @@ dialog::backdrop {
   transform: rotate(-30deg);
 }
 .garden-help {
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   margin-top: 0.7rem;
 }
@@ -1189,20 +1211,20 @@ dialog::backdrop {
   margin-top: 1.5rem;
   background: #f6f7f4;
   padding: 1.2rem 1.3rem;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
 }
 .selected-day-heading {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 .selected-day-heading strong {
   font-weight: 500;
 }
 .selected-day-heading > span {
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
 }
 .daily-values {
   display: grid;
@@ -1214,18 +1236,18 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .daily-values dd {
   margin: 0.35rem 0 0;
-  font-size: 1.7rem;
-  font-weight: 450;
+  font-size: 1.75rem;
+  font-weight: 400;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
 .daily-values small {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -1244,16 +1266,16 @@ dialog::backdrop {
   line-height: 1.2;
 }
 .fact-value small {
-  font-size: 0.85rem;
+  font-size: var(--text-small);
   letter-spacing: 0;
 }
 .garden-facts h3 {
-  font-size: 0.8rem;
+  font-size: var(--text-small);
   font-weight: 400;
   margin-top: 0.4rem;
 }
 .garden-facts p {
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   margin-top: 0.15rem;
 }
@@ -1261,7 +1283,7 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.8rem;
+  font-size: var(--text-small);
   margin-top: 1.7rem;
 }
 .garden-highlight svg {
@@ -1277,11 +1299,11 @@ dialog::backdrop {
 }
 .daily-records summary {
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--text-small);
 }
 .daily-records summary span {
   float: right;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .daily-table-wrap {
@@ -1290,13 +1312,13 @@ dialog::backdrop {
 .daily-records table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   margin-top: 1rem;
   font-variant-numeric: tabular-nums;
 }
 .daily-records caption {
   text-align: left;
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   padding-bottom: 0.8rem;
 }
@@ -1315,7 +1337,7 @@ dialog::backdrop {
 .public-footer {
   margin-top: 2.5rem;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 .public-footer p + p {
   margin-top: 1rem;
@@ -1369,16 +1391,13 @@ dialog::backdrop {
     gap: 0.6rem;
     flex-direction: column;
   }
-  .public-health .sync span {
-    display: none;
-  }
 }
 
 .garden-view-switch {
   display: flex;
   gap: 1.3rem;
   margin-top: 1rem;
-  font-size: 0.8rem;
+  font-size: var(--text-small);
 }
 .garden-view-switch button {
   padding: 0.35rem 0;
@@ -1439,7 +1458,7 @@ dialog::backdrop {
 }
 .calendar-weekdays {
   margin-top: 1.3rem;
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   text-align: center;
   padding-bottom: 0.5rem;
@@ -1455,11 +1474,11 @@ dialog::backdrop {
 }
 .calendar-bed .garden-day {
   padding: 7px 0 0;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   justify-content: start;
 }
 .calendar-date {
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   height: 20px;
   line-height: 20px;
 }
@@ -1472,7 +1491,7 @@ dialog::backdrop {
   align-items: center;
   flex-direction: column;
   padding-top: 7px;
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
 }
 .calendar-unshared span + span {
   margin-top: 2rem;
@@ -1480,6 +1499,9 @@ dialog::backdrop {
 @media (max-width: 480px) {
   .calendar-bed {
     --cell-height: 104px;
+  }
+  .garden-loading {
+    min-height: 38rem;
   }
   .garden-butterfly {
     opacity: var(--landed, 0);
