@@ -1011,6 +1011,9 @@ dialog::backdrop {
   max-width: 31rem;
   margin-top: 0.5rem;
 }
+.garden-trend {
+  margin-top: 1rem;
+}
 .garden-status {
   color: var(--muted);
   font-size: var(--text-caption);

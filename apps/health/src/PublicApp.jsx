@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { RefreshCw, ArrowLeft, ArrowRight, Play, Sprout, Footprints, Zap } from 'lucide-react';
 
+import { stepTrend, trendSentence } from './trend.js';
 import { calendarCells, calendarMonths, defaultMonth, seasonWeeks } from './garden-calendar.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
@@ -230,6 +231,7 @@ export default function PublicApp() {
   const totalMinutes = minuteDays.reduce((sum, row) => sum + row.zoneMinutes, 0);
   // Each day is shared seven full days after it ends, so day D appears on D + 8.
   const sharedThrough = allDays.at(-1)?.date;
+  const trend = trendSentence(stepTrend(allDays));
   const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
   const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
   // One tab stop for the plants: arrow keys move the selection, as in a date grid.
@@ -276,6 +278,7 @@ export default function PublicApp() {
           A garden of my daily movement, with a little room to breathe. Real Fitbit records, shared
           seven days later.
         </p>
+        {trend && <p className="garden-trend">{trend}</p>}
         {sharedThrough && (
           <p className="garden-status">
             Shared through {date(sharedThrough, true)}. {date(addDays(sharedThrough, 1))} appears on{' '}

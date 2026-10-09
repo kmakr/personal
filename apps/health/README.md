@@ -132,6 +132,8 @@ The page opens as a Monday-first garden calendar. Each shared date has a selecta
 
 A butterfly moves to the selected plant and perches above its flower, then stops. Selection works with a pointer or keyboard. The plants are one tab stop: the arrow keys move the selection by a day, or by a week in the calendar, and Home and End go to the first and last day. “Grow again” replays the plant animation. System reduced-motion settings disable movement and wing animation. The selected-day panel and expandable table show exact activity values.
 
+Under the introduction, one sentence gives the average daily steps over the last four weeks, counting recorded days only. It appears once seven days are recorded. It compares with the four weeks before only when both windows have at least 14 recorded days; changes under 5 percent read as about the same. Rolling windows are used because the sharing delay always leaves the current calendar month partial.
+
 Below the garden, “Week by week” draws the API's weekly totals as one plant per Monday-to-Sunday week, starting with the week of the first shared record. A week missing a day has no total and draws a dotted stem. The section stays hidden until there are two weeks to compare.
 
 Blood oxygen is excluded from the public UI, API response, cloud fetch, and stored snapshot. Old cloud snapshots are stripped when loaded. The private local dashboard can still show blood oxygen.
