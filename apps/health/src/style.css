@@ -1007,7 +1007,6 @@ dialog::backdrop {
   --ink: #141414;
   --ink-faint: #b3b3b0;
   --ink-rim: #9d9c97;
-  --wash-hover: #f7f7f6;
 }
 .garden-intro {
   color: var(--muted);
@@ -1239,77 +1238,32 @@ dialog::backdrop {
   color: var(--muted);
   margin-top: 0.7rem;
 }
-.selected-day-panel {
-  margin-top: 1.5rem;
-  background: var(--wash-hover);
-  padding: 1.2rem 1.3rem;
-  border-radius: var(--radius-lg);
-}
-.selected-day-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: var(--text-caption);
-}
-.selected-day-heading strong {
-  font-weight: 500;
-}
-.selected-day-heading > span {
-  color: var(--muted);
-  font-size: var(--text-caption);
-}
-.daily-values {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin: 1.2rem 0 0;
-}
-.daily-values dt {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: var(--text-caption);
-  color: var(--muted);
-}
-.daily-values dd {
-  margin: 0.35rem 0 0;
-  font-size: 1.75rem;
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-.daily-values small {
-  font-size: var(--text-caption);
-  font-weight: 400;
-  letter-spacing: 0;
-}
-.garden-summary {
+.field-notes {
   margin-top: 3rem;
 }
-.garden-facts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-top: 1.3rem;
+.field-notes ul {
+  list-style: none;
+  margin: 1.2rem 0 0;
+  padding: 0;
 }
-.fact-value {
-  font-size: 2.4rem;
-  letter-spacing: -0.05em;
-  line-height: 1.2;
-}
-.fact-value small {
+.field-notes li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
   font-size: var(--text-small);
-  letter-spacing: 0;
+  line-height: 1.6;
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed var(--rule);
 }
-.garden-facts h3 {
-  font-size: var(--text-small);
-  font-weight: 400;
-  margin-top: 0.4rem;
+.field-notes li:last-child {
+  border-bottom: 0;
 }
-.garden-facts p {
-  font-size: var(--text-caption);
-  color: var(--muted);
-  margin-top: 0.15rem;
+.field-notes svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  overflow: visible;
+  transform: translateY(2px);
 }
 .garden-highlight {
   display: flex;
@@ -1359,48 +1313,6 @@ dialog::backdrop {
   color: var(--muted);
   white-space: nowrap;
 }
-.daily-records {
-  border-block: 1px solid var(--rule);
-  padding: 1.2rem 0;
-  margin-top: 2.5rem;
-}
-.daily-records summary {
-  cursor: pointer;
-  font-size: var(--text-small);
-}
-.daily-records summary span {
-  float: right;
-  font-size: var(--text-caption);
-  color: var(--muted);
-}
-.daily-table-wrap {
-  overflow-x: auto;
-}
-.daily-records table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-caption);
-  margin-top: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-.daily-records caption {
-  text-align: left;
-  font-size: var(--text-caption);
-  color: var(--muted);
-  padding-bottom: 0.8rem;
-}
-.daily-records th,
-.daily-records td {
-  padding: 0.55rem 0.2rem;
-  text-align: right;
-  border-bottom: 1px solid #eee;
-}
-.daily-records th {
-  font-weight: 500;
-}
-.daily-records th:first-child {
-  text-align: left;
-}
 .public-footer {
   margin-top: 2.5rem;
   color: var(--muted);
@@ -1420,32 +1332,6 @@ dialog::backdrop {
   }
   .garden-plant {
     height: 130px;
-  }
-  .selected-day-panel {
-    padding: 1rem;
-  }
-  .selected-day-heading {
-    flex-direction: column;
-  }
-  .daily-values {
-    gap: 0.6rem;
-    grid-template-columns: 1fr 1fr;
-  }
-  .daily-values dt {
-    min-height: 2.2rem;
-    align-items: start;
-  }
-  .daily-values dt svg {
-    display: none;
-  }
-  .daily-values dd {
-    font-size: 1.4rem;
-  }
-  .garden-facts {
-    gap: 1rem;
-  }
-  .fact-value {
-    font-size: 2rem;
   }
   .garden-key {
     gap: 0.6rem;

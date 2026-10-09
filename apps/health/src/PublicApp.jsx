@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { RefreshCw, Play, Sprout, Footprints, Zap } from 'lucide-react';
+import { RefreshCw, Play, Sprout } from 'lucide-react';
 
 import { stepTrend, trendSentence } from './trend.js';
 import { seasonWeeks } from './season.js';
 import { arrivals, msUntilHongKongMidnight, untilText } from './midnight.js';
+import { fieldNotes } from './field-notes.js';
 
 const count = (value) => (value == null ? '—' : Math.round(value).toLocaleString('en-GB'));
 const date = (value, long = false) =>
@@ -15,7 +16,6 @@ const date = (value, long = false) =>
   });
 const weekday = (value) =>
   new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
-const plural = (value, word) => `${value} ${word}${value === 1 ? '' : 's'}`;
 const addDays = (value, amount) => {
   const next = new Date(`${value}T12:00:00Z`);
   next.setUTCDate(next.getUTCDate() + amount);
@@ -335,17 +335,13 @@ export default function PublicApp() {
   const day = rows.findLast(hasValue) || rows.at(-1);
   const maxSteps = Math.max(1, ...rows.map((row) => row.steps || 0));
   const maxMinutes = Math.max(1, ...rows.map((row) => row.zoneMinutes || 0));
-  const stepDays = rows.filter((row) => row.steps != null);
-  const minuteDays = rows.filter((row) => row.zoneMinutes != null);
-  const totalSteps = stepDays.reduce((sum, row) => sum + row.steps, 0);
-  const totalMinutes = minuteDays.reduce((sum, row) => sum + row.zoneMinutes, 0);
   // Each day is shared seven full days after it ends, so day D appears on D + 8.
   const sharedThrough = allDays.at(-1)?.date;
   const trend = trendSentence(stepTrend(allDays));
   const season = seasonWeeks(data?.weeks, allDays[firstRecord]?.date);
   // The moth breathes at the newest weekly average breathing rate, if one is public.
   const breathWeek = data?.weeks?.findLast((week) => week.breathingRate != null);
-  const best = stepDays.reduce((a, row) => (!a || row.steps > a.steps ? row : a), null);
+  const notes = fieldNotes(rows, hasValue(day) ? day : null, breathWeek);
   return (
     <div className="app-shell public-health garden-page">
       <svg className="ink-defs" aria-hidden="true" focusable="false">
@@ -455,114 +451,26 @@ export default function PublicApp() {
               </div>
               <p className="garden-help">
                 Shapes compare the seven days. Plants sway more on days with more active minutes. A
-                dotted stem means no step record. The moth rests on the newest day.
+                dotted stem means no step record.
               </p>
-              {breathWeek && (
-                <p className="garden-help">
-                  The moth breathes at my average breathing rate for the week of{' '}
-                  {date(breathWeek.start)}: {breathWeek.breathingRate} breaths a minute.
-                </p>
-              )}
-              {day && (
-                <div className="selected-day-panel" aria-live="polite" aria-atomic="true">
-                  <div className="selected-day-heading">
-                    <strong>
-                      {weekday(day.date)}, {date(day.date, true)}
-                    </strong>
-                    <span>{hasValue(day) ? 'Recorded day' : 'No records for this day'}</span>
-                  </div>
-                  <dl className="daily-values">
-                    <div>
-                      <dt>
-                        <Footprints size={14} /> Steps
-                      </dt>
-                      <dd>{count(day.steps)}</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        <Zap size={14} /> Active zone minutes
-                      </dt>
-                      <dd>
-                        {count(day.zoneMinutes)}
-                        <small> min</small>
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
             </section>
-            {/* With one recorded day the selected-day panel already says all of this. */}
-            {(stepDays.length > 1 || minuteDays.length > 1) && (
-              <section className="garden-summary" aria-label="Period summary">
-                <h2>A few things this garden says</h2>
-                <div className="garden-facts">
-                  <article>
-                    <span className="fact-value">{stepDays.length ? count(totalSteps) : '—'}</span>
-                    <h3>steps in these 7 days</h3>
-                    <p>
-                      {stepDays.length} of {plural(rows.length, 'day')} recorded
-                    </p>
-                  </article>
-                  <article>
-                    <span className="fact-value">
-                      {minuteDays.length ? count(totalMinutes) : '—'}
-                      <small> min</small>
-                    </span>
-                    <h3>active zone minutes</h3>
-                    <p>
-                      {minuteDays.length} of {plural(rows.length, 'day')} recorded
-                    </p>
-                  </article>
-                </div>
-                {best && (
-                  <p className="garden-highlight">
-                    <Sprout size={17} />
-                    <span>
-                      The tallest stem: <strong>{date(best.date)}</strong>, with{' '}
-                      <strong>{count(best.steps)} steps</strong>.
-                    </span>
-                  </p>
-                )}
-                {(stepDays.length < rows.length || minuteDays.length < rows.length) && (
-                  <p className="garden-help">
-                    These sums include recorded days only. Missing days are not counted as zero.
-                  </p>
-                )}
+            {notes.length > 0 && (
+              <section className="field-notes" aria-label="Field notes">
+                <h2>Field notes</h2>
+                <ul>
+                  {notes.map((note) => (
+                    <li key={note}>
+                      <svg viewBox="-8 -8 16 16" aria-hidden="true" focusable="false">
+                        <Portal r={4.2} />
+                      </svg>
+                      <span>{note}</span>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
             {/* One complete week has nothing to compare against yet. */}
             {season.length > 1 && <Season weeks={season} />}
-            <details className="daily-records">
-              <summary>
-                See the daily records <span>{plural(rows.length, 'day')}</span>
-              </summary>
-              <div className="daily-table-wrap">
-                <table>
-                  <caption>
-                    Daily records for {date(rows[0].date)} to {date(rows.at(-1).date, true)}
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Date</th>
-                      <th scope="col">Steps</th>
-                      <th scope="col">Active min</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...rows].reverse().map((row) => (
-                      <tr key={row.date}>
-                        <th scope="row">{date(row.date)}</th>
-                        <td>{count(row.steps)}</td>
-                        <td>{count(row.zoneMinutes)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="garden-help">
-                Active zone minutes are weighted by intensity. A dash means no recorded value.
-              </p>
-            </details>
           </>
         )}
         <footer className="public-footer">
