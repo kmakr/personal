@@ -470,12 +470,13 @@ export default function PublicApp() {
   const [now, setNow] = useState(() => Date.now());
   const shown = useRef(null);
   // quiet: a background check at midnight; a failure keeps the page as it is.
-  async function load(refresh = false, quiet = false) {
+  async function load(quiet = false) {
     setBusy(true);
     if (!quiet) setError('');
     try {
-      // The feed may be up to five minutes old. A retry skips the browser copy.
-      const response = await fetch('/health/api/dashboard', refresh ? { cache: 'no-cache' } : {});
+      // Always ask the server. Cloudflare can tell browsers to keep the feed for
+      // hours, which would hide new days; the edge copy keeps the check cheap.
+      const response = await fetch('/health/api/dashboard', { cache: 'no-cache' });
       if (!response.ok) throw new Error('The activity page could not load.');
       const next = await response.json();
       // Older versions lack some measurements. The edge cache can still serve one
@@ -509,7 +510,7 @@ export default function PublicApp() {
     let timer;
     let attempts = 0;
     async function check() {
-      const next = await load(true, true);
+      const next = await load(true);
       if (next?.days.at(-1)?.date === lastShared && ++attempts < 8)
         timer = setTimeout(check, 60000);
     }
@@ -569,7 +570,7 @@ export default function PublicApp() {
         {error && (
           <p className="message error" role="alert">
             {error}{' '}
-            <button className="retry" disabled={busy} onClick={() => load(true)}>
+            <button className="retry" disabled={busy} onClick={() => load()}>
               <RefreshCw size={13} className={busy ? 'spin' : ''} /> Try again
             </button>
           </p>
