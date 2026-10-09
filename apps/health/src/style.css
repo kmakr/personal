@@ -1149,16 +1149,33 @@ dialog::backdrop {
 .plant-head {
   fill: var(--ink);
 }
-/* The selected day is the one place the portal shows: a silver rim. */
-.plant-rim {
-  fill: none;
-  stroke: var(--ink-rim);
-  stroke-width: 1;
-  opacity: 0;
-  transition: opacity 0.3s;
+/* The portal: a soft grey haze, a near-black core, and bright folds. */
+.portal-haze {
+  fill: var(--ink);
+  opacity: 0.09;
 }
-.garden-day.selected .plant-rim {
+.portal-core {
+  fill: #0a0a0a;
+}
+.portal-fold {
+  fill: none;
+  stroke: #ecebe6;
+  stroke-width: 0.7;
+}
+.portal-fold.inner {
+  stroke: var(--ink-rim);
+}
+/* The selected day is the one place a flower opens into the portal. */
+.plant-portal {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+.garden-day.selected .plant-portal {
   opacity: 1;
+  transform: scale(1.25);
 }
 .plant-zero,
 .plant-missing {
@@ -1465,7 +1482,7 @@ dialog::backdrop {
 .garden-plot {
   position: relative;
 }
-.garden-butterfly {
+.garden-moth {
   opacity: var(--landed, 0);
   position: absolute;
   top: 0;
@@ -1473,36 +1490,40 @@ dialog::backdrop {
   width: 27px;
   height: 24px;
   pointer-events: none;
-  transform: translate(calc(var(--butterfly-x, 0px) - 13px), calc(var(--butterfly-y, 0px) - 24px));
+  transform: translate(calc(var(--moth-x, 0px) - 13px), calc(var(--moth-y, 0px) - 24px));
   transition: transform 0.75s cubic-bezier(0.22, 0.65, 0.35, 1);
   z-index: 2;
 }
-.garden-butterfly svg {
+.garden-moth svg {
   width: 100%;
   height: 100%;
   overflow: visible;
-  transform: rotate(-12deg);
+  transform: rotate(-8deg);
 }
-.butterfly-wings {
-  fill: var(--ink);
+/* A quick flutter on landing, then a slow breath, like the portal's moving ink. */
+.moth-wings {
   transform-origin: 16px 16px;
-  animation: butterfly-flutter 0.18s ease-in-out 4 alternate;
+  animation:
+    moth-flutter 0.18s ease-in-out 4 alternate,
+    moth-breathe 3.2s ease-in-out 0.8s infinite;
 }
-.butterfly-wings .lower-wings {
-  fill: #6f6f6f;
-}
-.butterfly-body {
+.moth-body {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 1.1;
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
-@keyframes butterfly-flutter {
+@keyframes moth-flutter {
   from {
     transform: scaleX(0.35);
   }
   to {
     transform: scaleX(1);
+  }
+}
+@keyframes moth-breathe {
+  50% {
+    transform: scaleX(0.82);
   }
 }
 .calendar-weekdays,
@@ -1557,7 +1578,7 @@ dialog::backdrop {
   .garden-loading {
     min-height: 38rem;
   }
-  .garden-butterfly {
+  .garden-moth {
     opacity: var(--landed, 0);
     width: 24px;
     height: 22px;

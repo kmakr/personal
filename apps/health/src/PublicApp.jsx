@@ -22,6 +22,19 @@ const addDays = (value, amount) => {
 };
 const hasValue = (row) => row && [row.steps, row.zoneMinutes].some((value) => value != null);
 
+// A small copy of the homepage portal: smoky haze, an ink core, and two bright
+// folds turning inward. The page-level ink-edge filter roughens the outlines.
+function Portal({ cx = 0, cy = 0, r }) {
+  return (
+    <g className="portal" filter="url(#ink-edge)">
+      <circle className="portal-haze" cx={cx} cy={cy} r={r * 1.35} filter="url(#ink-haze)" />
+      <circle className="portal-core" cx={cx} cy={cy} r={r} />
+      <circle className="portal-fold" cx={cx + r * 0.08} cy={cy - r * 0.05} r={r * 0.66} />
+      <circle className="portal-fold inner" cx={cx - r * 0.1} cy={cy + r * 0.06} r={r * 0.32} />
+    </g>
+  );
+}
+
 function Plant({ row, maxSteps, maxMinutes, index }) {
   const height = row.steps == null ? 28 : row.steps === 0 ? 0 : 18 + (row.steps / maxSteps) * 89;
   const tip = 132 - height;
@@ -57,8 +70,11 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
         })}
         {row.steps != null && row.steps > 0 && (
           <g className="plant-flower" transform={`translate(24 ${tip})`}>
-            <circle className="plant-rim" r="7.5" />
             <circle className="plant-head" r="4" />
+            {/* Only the selected day opens into the portal. */}
+            <g className="plant-portal">
+              <Portal r={5} />
+            </g>
           </g>
         )}
         {row.steps === 0 && <circle className="plant-zero" cx="24" cy="131" r="3" />}
@@ -68,13 +84,13 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
   );
 }
 
-function Butterfly({ plot, day, maxSteps, animation, view }) {
+function Moth({ plot, day, maxSteps, animation, view }) {
   const insect = useRef(null);
   useEffect(() => {
     const parent = plot.current;
     const target = parent?.querySelector(`[data-date="${day?.date}"] .garden-plant`);
-    const butterfly = insect.current;
-    if (!parent || !target || !butterfly) return;
+    const moth = insect.current;
+    if (!parent || !target || !moth) return;
     function land() {
       const box = target.getBoundingClientRect();
       const garden = parent.getBoundingClientRect();
@@ -82,21 +98,18 @@ function Butterfly({ plot, day, maxSteps, animation, view }) {
       const height =
         day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
       // Land beside the flower head: above it, a tall stem would push the
-      // butterfly over the calendar date.
+      // moth over the calendar date.
       const side = day.steps > 0 ? 14 : 0;
-      // The butterfly is about 24px tall, so +10 centres it on the head.
+      // The moth is about 24px tall, so +10 centres it on the head.
       const y =
         box.top -
         garden.top +
         (box.height - 152 * scale) / 2 +
         (132 - height) * scale +
         (side ? 10 : 0);
-      butterfly.style.setProperty(
-        '--butterfly-x',
-        `${box.left - garden.left + box.width / 2 + side}px`,
-      );
-      butterfly.style.setProperty('--butterfly-y', `${y}px`);
-      butterfly.style.setProperty('--landed', '1');
+      moth.style.setProperty('--moth-x', `${box.left - garden.left + box.width / 2 + side}px`);
+      moth.style.setProperty('--moth-y', `${y}px`);
+      moth.style.setProperty('--landed', '1');
     }
     land();
     const observer = new ResizeObserver(land);
@@ -105,16 +118,16 @@ function Butterfly({ plot, day, maxSteps, animation, view }) {
   }, [plot, day, maxSteps, animation, view]);
   if (!day) return null;
   return (
-    <span ref={insect} className="garden-butterfly" aria-hidden="true">
+    <span ref={insect} className="garden-moth" aria-hidden="true">
+      {/* Each wing is a small portal, so the moth reads as made of the same ink. */}
       <svg key={`${day.date}-${animation}-${view}`} viewBox="0 0 32 28">
-        <g className="butterfly-wings">
-          <path d="M16 17 C-1 15 1 -1 10 4 Q16 8 16 17 M16 17 C33 15 31 -1 22 4 Q16 8 16 17" />
-          <path
-            className="lower-wings"
-            d="M16 16 C2 13 6 29 13 22 L16 17 M16 16 C30 13 26 29 19 22 L16 17"
-          />
+        <g className="moth-wings">
+          <Portal cx={12} cy={20.5} r={3.2} />
+          <Portal cx={20} cy={20.5} r={3.2} />
+          <Portal cx={9.5} cy={12} r={6.2} />
+          <Portal cx={22.5} cy={12} r={6.2} />
         </g>
-        <path className="butterfly-body" d="M16 10 L16 22 M16 12 Q14 5 11 6 M16 12 Q18 5 21 6" />
+        <path className="moth-body" d="M16 8 L16 23 M16 8 Q14.5 1 10 -0.5 M16 8 Q17.5 1 22 -0.5" />
       </svg>
     </span>
   );
@@ -271,9 +284,12 @@ export default function PublicApp() {
   return (
     <div className="app-shell public-health garden-page">
       <svg className="ink-defs" aria-hidden="true" focusable="false">
-        <filter id="ink-edge">
+        <filter id="ink-edge" x="-30%" y="-30%" width="160%" height="160%">
           <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="7" />
           <feDisplacementMap in="SourceGraphic" scale="1.6" />
+        </filter>
+        <filter id="ink-haze" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.3" />
         </filter>
       </svg>
       <header className="site-header">
@@ -456,13 +472,7 @@ export default function PublicApp() {
                     },
                   )}
                 </div>
-                <Butterfly
-                  plot={plot}
-                  day={day}
-                  maxSteps={maxSteps}
-                  animation={animation}
-                  view={view}
-                />
+                <Moth plot={plot} day={day} maxSteps={maxSteps} animation={animation} view={view} />
               </div>
               <div className="garden-key">
                 <span>
