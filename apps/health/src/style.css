@@ -94,6 +94,8 @@ svg {
   font-weight: 500;
 }
 .site-mark {
+  /* Shared with theoazriel.com, so the portal travels between the two pages. */
+  view-transition-name: portal;
   display: block;
   position: relative;
   width: 96px;
@@ -1544,4 +1546,14 @@ div.garden-roots {
   position: absolute;
   width: 0;
   height: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+::view-transition-group(portal) {
+  animation-duration: 0.6s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
 }

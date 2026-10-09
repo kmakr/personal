@@ -15,6 +15,7 @@ const fragmentSource = `
   uniform float time;
   uniform vec2 pointer;
   uniform float touch;
+  uniform float beat;
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -48,6 +49,8 @@ const fragmentSource = `
   void main() {
     vec2 p = uv * 2.0 - 1.0;
     p -= pointer * touch * 0.12;
+    // A heartbeat swells the opening slightly.
+    p /= 1.0 + beat * 0.045;
     float t = time * 0.42;
     vec2 drift = vec2(t * 0.36, -t * 0.28);
     vec2 flow = vec2(
@@ -79,6 +82,7 @@ const fragmentSource = `
     float aperture = 0.605 + 0.018 * sin(angle * 2.0 - t);
     float rim = exp(-pow((radius - aperture) / 0.027, 2.0));
     rim *= 0.58 + 0.42 * sin(angle * 2.0 + t * 1.4) * sin(angle * 2.0 + t * 1.4);
+    rim *= 1.0 + beat * 0.6;
     float rimEcho = exp(-pow((radius - aperture - 0.057) / 0.012, 2.0));
     rimEcho *= 0.5 + 0.5 * sin(angle * 3.0 - t * 1.1);
 
@@ -106,8 +110,25 @@ const fragmentSource = `
   }
 `;
 
+// A heartbeat's shape: a strong beat, then a softer one a fifth of a second later.
+export function heartbeat(seconds: number, bpm: number) {
+  const phase = seconds % (60 / bpm);
+  return Math.exp(-((phase / 0.07) ** 2)) + 0.5 * Math.exp(-(((phase - 0.22) / 0.06) ** 2));
+}
+
 class InkMark extends HTMLElement {
   private cleanup?: () => void;
+  private leanTo?: (x: number, y: number) => void;
+  private settle?: () => void;
+
+  // Turn the opening toward a point, in the mark's own -1 to 1 space (y up).
+  lean(x: number, y: number) {
+    this.leanTo?.(x, y);
+  }
+
+  rest() {
+    this.settle?.();
+  }
 
   connectedCallback() {
     this.cleanup?.();
@@ -157,6 +178,8 @@ class InkMark extends HTMLElement {
         gl.deleteProgram(program);
         this.removeAttribute('data-rendered');
         this.dataset.inkState = 'static';
+        this.leanTo = undefined;
+        this.settle = undefined;
       };
       disposeRenderer = dispose;
 
@@ -194,6 +217,7 @@ class InkMark extends HTMLElement {
         const timeUniform = gl.getUniformLocation(program, 'time');
         const pointerUniform = gl.getUniformLocation(program, 'pointer');
         const touchUniform = gl.getUniformLocation(program, 'touch');
+        const beatUniform = gl.getUniformLocation(program, 'beat');
         let ready = false;
         let visible = false;
         let pageHidden = false;
@@ -211,6 +235,9 @@ class InkMark extends HTMLElement {
           gl.uniform1f(timeUniform, elapsed);
           gl.uniform2f(pointerUniform, x, y);
           gl.uniform1f(touchUniform, touch);
+          // data-bpm, when set, makes the portal beat at that pulse.
+          const bpm = Number(this.dataset.bpm);
+          gl.uniform1f(beatUniform, bpm >= 25 && bpm <= 200 ? heartbeat(elapsed, bpm) : 0);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           if (!this.hasAttribute('data-rendered')) this.setAttribute('data-rendered', '');
         };
@@ -268,6 +295,12 @@ class InkMark extends HTMLElement {
         const release = () => {
           targetTouch = 0;
         };
+        this.leanTo = (toX, toY) => {
+          targetX = Math.max(-1, Math.min(1, toX));
+          targetY = Math.max(-1, Math.min(1, toY));
+          targetTouch = 1;
+        };
+        this.settle = release;
         this.addEventListener('pointerleave', release, options);
         this.addEventListener('pointercancel', release, options);
         finePointer.addEventListener('change', release, options);

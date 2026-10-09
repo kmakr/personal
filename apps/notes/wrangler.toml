@@ -1,9 +1,13 @@
 name = "theo-notes"
 compatibility_date = "2026-08-05"
 workers_dev = true
+# Only /api/ requests run this script; everything else is served from dist.
+main = "worker.js"
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
 html_handling = "drop-trailing-slash"
 not_found_handling = "404-page"
 
