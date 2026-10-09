@@ -84,14 +84,48 @@ function Plant({ row, maxSteps, maxMinutes, index }) {
   );
 }
 
+// The moth's resting tilt, and the point it rotates around (its centre).
+const MOTH_REST = -8;
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mothTransform = (x, y, angle) => `translate(${x - 13}px, ${y - 24}px) rotate(${angle}deg)`;
+
+// A flight from one point to another as keyframes: an arc that lifts above both
+// ends, a bob from each wing beat, and a bank into the direction of travel that
+// eases back to the resting tilt on landing. Equal ends make a small hop.
+function flightPath(from, to) {
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  const lift = 28 + distance * 0.3;
+  const control = { x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - lift };
+  const steps = 36;
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const raw = i / steps;
+    const t = raw < 0.5 ? 2 * raw * raw : 1 - (-2 * raw + 2) ** 2 / 2;
+    const u = 1 - t;
+    const x = u * u * from.x + 2 * u * t * control.x + t * t * to.x;
+    const y = u * u * from.y + 2 * u * t * control.y + t * t * to.y;
+    const dx = 2 * u * (control.x - from.x) + 2 * t * (to.x - control.x);
+    const dy = 2 * u * (control.y - from.y) + 2 * t * (to.y - control.y);
+    // Head stays up; the body leans toward horizontal travel, up to 40 degrees.
+    const bank = Math.max(-40, Math.min(40, (Math.atan2(dx, Math.abs(dy) + 1) * 180) / Math.PI));
+    const settle = Math.min(1, Math.max(0, (raw - 0.8) / 0.2));
+    const bob = Math.sin(raw * Math.PI * 9) * 2.5 * (1 - settle);
+    return {
+      transform: mothTransform(x, y + bob, bank * (1 - settle) + MOTH_REST * settle),
+      offset: raw,
+    };
+  });
+}
+
 function Moth({ plot, day, maxSteps, animation, view }) {
   const insect = useRef(null);
+  // Where the moth is now, so the next flight starts from it.
+  const perch = useRef(null);
   useEffect(() => {
     const parent = plot.current;
     const target = parent?.querySelector(`[data-date="${day?.date}"] .garden-plant`);
     const moth = insect.current;
     if (!parent || !target || !moth) return;
-    function land() {
+    function place(fly) {
       const box = target.getBoundingClientRect();
       const garden = parent.getBoundingClientRect();
       const scale = Math.min(box.width / 48, box.height / 152);
@@ -101,18 +135,41 @@ function Moth({ plot, day, maxSteps, animation, view }) {
       // moth over the calendar date.
       const side = day.steps > 0 ? 14 : 0;
       // The moth is about 24px tall, so +10 centres it on the head.
-      const y =
-        box.top -
-        garden.top +
-        (box.height - 152 * scale) / 2 +
-        (132 - height) * scale +
-        (side ? 10 : 0);
-      moth.style.setProperty('--moth-x', `${box.left - garden.left + box.width / 2 + side}px`);
-      moth.style.setProperty('--moth-y', `${y}px`);
-      moth.style.setProperty('--landed', '1');
+      const to = {
+        x: box.left - garden.left + box.width / 2 + side,
+        y:
+          box.top -
+          garden.top +
+          (box.height - 152 * scale) / 2 +
+          (132 - height) * scale +
+          (side ? 10 : 0),
+      };
+      // The first flight comes in from beyond the top right of the garden.
+      const from = perch.current || { x: garden.width + 30, y: -40 };
+      perch.current = to;
+      moth.getAnimations().forEach((running) => running.cancel());
+      moth.style.transform = mothTransform(to.x, to.y, MOTH_REST);
+      moth.style.opacity = '1';
+      if (!fly || reducedMotion()) {
+        moth.dataset.state = 'landed';
+        return;
+      }
+      moth.dataset.state = 'flying';
+      const distance = Math.hypot(to.x - from.x, to.y - from.y);
+      const flight = moth.animate(flightPath(from, to), {
+        duration: Math.min(1500, 650 + distance * 1.4),
+      });
+      flight.onfinish = () => (moth.dataset.state = 'landed');
     }
-    land();
-    const observer = new ResizeObserver(land);
+    place(true);
+    // A resize moves the flower, so the moth follows without flying. The
+    // observer also reports once on start; that is not a resize.
+    let width = parent.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (parent.clientWidth === width) return;
+      width = parent.clientWidth;
+      place(false);
+    });
     observer.observe(parent);
     return () => observer.disconnect();
   }, [plot, day, maxSteps, animation, view]);
@@ -120,14 +177,19 @@ function Moth({ plot, day, maxSteps, animation, view }) {
   return (
     <span ref={insect} className="garden-moth" aria-hidden="true">
       {/* Each wing is a small portal, so the moth reads as made of the same ink. */}
-      <svg key={`${day.date}-${animation}-${view}`} viewBox="0 0 32 28">
-        <g className="moth-wings">
-          <Portal cx={12} cy={20.5} r={3.2} />
-          <Portal cx={20} cy={20.5} r={3.2} />
-          <Portal cx={9.5} cy={12} r={6.2} />
-          <Portal cx={22.5} cy={12} r={6.2} />
+      <svg viewBox="0 0 32 28">
+        <g className="moth-sway">
+          <g className="moth-wing left">
+            <Portal cx={12} cy={20.5} r={3.2} />
+            <Portal cx={9.5} cy={12} r={6.2} />
+          </g>
+          <g className="moth-wing right">
+            <Portal cx={20} cy={20.5} r={3.2} />
+            <Portal cx={22.5} cy={12} r={6.2} />
+          </g>
+          <path className="moth-body" d="M16 8 L16 23" />
+          <path className="moth-antennae" d="M16 8 Q14.5 1 10 -0.5 M16 8 Q17.5 1 22 -0.5" />
         </g>
-        <path className="moth-body" d="M16 8 L16 23 M16 8 Q14.5 1 10 -0.5 M16 8 Q17.5 1 22 -0.5" />
       </svg>
     </span>
   );
