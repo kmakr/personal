@@ -4,15 +4,14 @@ A local dashboard for Fitbit Air data from the Google Health API v4. It shows st
 
 ## Run
 
-Requires Node.js 22.12 or later.
+Requires Node.js 22.12 or later and Bun.
 
 This app is the `@theo/health` workspace in the personal site repository.
-From the repository root, run `npm ci`, then `npm run dev:health`.
+From the repository root, run `bun install`, then `bun run dev:health`.
 The commands below run from `apps/health`.
 
 ```sh
-npm install
-npm run dev
+bun run dev
 ```
 
 Open http://localhost:3000. The first view shows **sample data**. Click **Connect Google Health** for the setup guide.
@@ -48,9 +47,9 @@ Access and refresh tokens stay in server memory. They do not go to browser stora
 ## Checks
 
 ```sh
-npm run build
-npm test
-npm start
+bun run build
+bun run test
+bun run start
 ```
 
 This app binds only to the local computer. It is not configured for a public server or multiple users. A public deployment requires a persistent session store, HTTPS, secret storage, and a separate access-control design.
@@ -83,10 +82,10 @@ Google testing-mode refresh tokens can expire after seven days. Sign in locally 
 Commands:
 
 ```sh
-npm run build:public
-npx wrangler dev --local --port 8787
-npx wrangler deploy --dry-run
-npm run deploy:public
+bun run build:public
+bunx wrangler dev --local --port 8787
+bunx wrangler deploy --dry-run
+bun run deploy:public
 ```
 
 Cloud secrets required: `OWNER_KEY` (random owner authorization key) and `DATA_KEY` (base64-encoded 32-byte encryption key). Upload through `wrangler secret bulk` from the protected local secrets file. Never use a Vite variable for secrets.
@@ -122,7 +121,7 @@ migration tag are unchanged. Do not rename them during a source-only move.
 Automatic deployment uses `wrangler versions upload` and deploys that exact
 version tag at 100 percent traffic. It keeps the existing `/health/` route and
 needs Worker upload and deployment permissions only. A full manual
-`npm run deploy:health` also needs `Workers Routes: Edit` for the
+`bun run deploy:health` also needs `Workers Routes: Edit` for the
 `theoazriel.com` zone. Keep any route access limited to that zone. Initial
 route setup or a future Durable Object migration may require a full manual
 deployment before automated version deployments resume.

@@ -3,7 +3,7 @@ dist
 .astro
 .wrangler
 .claude
-package-lock.json
+bun.lock
 apps/gallery/src/photos
 
 apps/health/dist-public

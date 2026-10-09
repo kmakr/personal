@@ -22,10 +22,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
       # prettier, eslint, astro check + build, tsc + vite build, and a
       # dry-run deploy of the two Workers that have no build step
-      - run: npm run check
+      - run: bun run check

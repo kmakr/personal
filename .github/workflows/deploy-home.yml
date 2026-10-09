@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - 'apps/home/**'
-      - 'package-lock.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
       - '.github/workflows/deploy-home.yml'
       - '.nvmrc'
   workflow_dispatch:
@@ -26,11 +27,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
-      - run: npm run deploy:home
+      - run: bun run deploy:home
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

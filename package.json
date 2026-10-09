@@ -6,28 +6,28 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "build:gallery": "npm run build --workspace @theo/gallery",
-    "build:notes": "npm run build --workspace @theo/notes",
-    "check": "npm run format:check && npm run lint && npm run build && npm run check:workers && npm run check:health",
-    "check:workers": "wrangler deploy --dry-run --config apps/home/wrangler.toml && wrangler deploy --dry-run --config apps/cms-auth/wrangler.toml",
+    "build": "bun run --filter './apps/*' build",
+    "build:gallery": "bun run --cwd apps/gallery build",
+    "build:notes": "bun run --cwd apps/notes build",
+    "check": "bun run format:check && bun run lint && bun run build && bun run check:workers && bun run check:health",
+    "check:workers": "bun run --cwd apps/home wrangler deploy --dry-run && bun run --cwd apps/cms-auth wrangler deploy --dry-run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "dev:home": "npm run dev --workspace @theo/home",
-    "dev:notes": "npm run dev --workspace @theo/notes",
-    "dev:gallery": "npm run dev --workspace @theo/gallery",
-    "dev:cms-auth": "npm run dev --workspace @theo/cms-auth",
-    "deploy:home": "npm run deploy --workspace @theo/home",
-    "deploy:gallery": "npm run deploy --workspace @theo/gallery",
-    "deploy:notes": "npm run deploy --workspace @theo/notes",
-    "deploy:cms-auth": "npm run deploy --workspace @theo/cms-auth",
-    "dev:health": "npm run dev --workspace @theo/health",
-    "build:health": "npm run build --workspace @theo/health",
-    "build:health:public": "npm run build:public --workspace @theo/health",
-    "test:health": "npm run build:health && npm test --workspace @theo/health",
-    "deploy:health": "npm run deploy --workspace @theo/health",
-    "check:health": "npm run build:health:public && npm run test:health && npm run check:worker --workspace @theo/health"
+    "dev:home": "bun run --cwd apps/home dev",
+    "dev:notes": "bun run --cwd apps/notes dev",
+    "dev:gallery": "bun run --cwd apps/gallery dev",
+    "dev:cms-auth": "bun run --cwd apps/cms-auth dev",
+    "deploy:home": "bun run --cwd apps/home deploy",
+    "deploy:gallery": "bun run --cwd apps/gallery deploy",
+    "deploy:notes": "bun run --cwd apps/notes deploy",
+    "deploy:cms-auth": "bun run --cwd apps/cms-auth deploy",
+    "dev:health": "bun run --cwd apps/health dev",
+    "build:health": "bun run --cwd apps/health build",
+    "build:health:public": "bun run --cwd apps/health build:public",
+    "test:health": "bun run build:health && bun run --cwd apps/health test",
+    "deploy:health": "bun run --cwd apps/health deploy",
+    "check:health": "bun run build:health:public && bun run test:health && bun run --cwd apps/health check:worker"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -37,5 +37,6 @@
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^0.14.1",
     "typescript-eslint": "^8.69.0"
-  }
+  },
+  "packageManager": "bun@1.4.2"
 }

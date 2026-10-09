@@ -1,0 +1,4 @@
+[install]
+# Each package sees only its own dependencies. The hoisted layout put the
+# cookie 0.7 that express-session needs where Astro expects cookie 2.
+linker = "isolated"

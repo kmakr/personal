@@ -9,8 +9,8 @@
     "start": "NODE_ENV=production node server/index.js",
     "test": "node --test tests/*.test.js",
     "build:public": "vite build --config vite.public.config.js",
-    "deploy:public": "npm run build:public && wrangler deploy",
-    "deploy": "npm run deploy:public",
+    "deploy:public": "bun run build:public && wrangler deploy",
+    "deploy": "bun run deploy:public",
     "check:worker": "wrangler deploy --dry-run"
   },
   "dependencies": {

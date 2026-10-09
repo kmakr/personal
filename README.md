@@ -41,25 +41,28 @@ Credentials and health records must stay out of Git.
 
 ## Run
 
+Bun installs the packages and runs the scripts. Node.js (the version in
+`.nvmrc`) still runs the tools, the local health server, and the tests.
+
 ```bash
-npm install
-npm run dev:notes
-npm run dev:gallery
-npm run dev:home
-npm run dev:cms-auth
-npm run dev:health
+bun install
+bun run dev:notes
+bun run dev:gallery
+bun run dev:home
+bun run dev:cms-auth
+bun run dev:health
 ```
 
 ## Check
 
 ```bash
-npm run check
+bun run check
 ```
 
 That runs Prettier, ESLint, `astro check`, the notes and gallery builds, and a
 dry-run deploy of the two Workers that have no build step. The same command
 runs in CI on every pull request. It also builds the public health page, runs
-its tests, and checks its Worker without deploying. `npm run format` rewrites files to the house
+its tests, and checks its Worker without deploying. `bun run format` rewrites files to the house
 style.
 
 ## Deploy
@@ -69,11 +72,11 @@ that runs only when that app, the lockfile, or the workflow itself changed.
 To deploy by hand:
 
 ```bash
-npm run deploy:notes
-npm run deploy:gallery
-npm run deploy:home
-npm run deploy:cms-auth
-npm run deploy:health
+bun run deploy:notes
+bun run deploy:gallery
+bun run deploy:home
+bun run deploy:cms-auth
+bun run deploy:health
 ```
 
 ## Publish a note

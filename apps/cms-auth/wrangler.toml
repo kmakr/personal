@@ -6,7 +6,7 @@
 # Configuration lives in two places:
 #   GITHUB_CLIENT_ID     — public identifier, plain var below
 #   GITHUB_CLIENT_SECRET — real secret, stored at Cloudflare, never in git:
-#                          npx wrangler secret put GITHUB_CLIENT_SECRET
+#                          bunx wrangler secret put GITHUB_CLIENT_SECRET
 
 name = "theo-cms-auth"
 main = "src/index.js"
