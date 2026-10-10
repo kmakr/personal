@@ -348,6 +348,26 @@ blockquote {
   margin-top: 2px;
 }
 
+/* Ink drops: a layer over the whole document, under the text. The page's
+   background belongs to the canvas, so a negative z-index still shows. */
+.ink-drops {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ink-drops svg {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  overflow: visible;
+  fill: var(--heading-color);
+}
+
 /* --- project previews ---
    On hover, each project shows a small window onto itself in the right margin,
    opposite the ink thread in the left: the Home room's leaf shadows, the last
