@@ -1,3 +1,11 @@
+# Built files carry a content hash in their names, so a browser can keep them
+# for good and skip asking again on later visits.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/grain.png
+  Cache-Control: public, max-age=2592000
+
 # The homepage at theoazriel.com reads the list of small prints.
 /preview.json
   Access-Control-Allow-Origin: https://theoazriel.com
