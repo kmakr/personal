@@ -84,6 +84,7 @@ var e = class extends HTMLElement {
   uniform float time;
   uniform vec2 pointer;
   uniform float touch;
+  uniform float dark;
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -167,8 +168,11 @@ var e = class extends HTMLElement {
     float highlight = smoothstep(0.3, 0.8, stamp.r) * stamp.a * core;
     float light = 0.012 + depth * 0.045 + folds * 0.46 + filaments;
     light += rim * 0.78 + rimEcho * 0.29 + highlight * 0.16;
-    vec3 color = mix(vec3(0.10), vec3(light), 1.0 - smoothstep(0.68, 0.75, radius));
-    float alpha = max(core, max(wash * 0.64, specks * 0.68));
+    // On dark paper a near-black wash vanishes, so there the ink spreads as a
+    // paler damp stain around the opening instead.
+    float stain = mix(0.10, 0.42, dark);
+    vec3 color = mix(vec3(stain), vec3(light), 1.0 - smoothstep(0.68, 0.75, radius));
+    float alpha = max(core, max(wash * mix(0.64, 0.62, dark), specks * mix(0.68, 0.55, dark)));
     vec2 frame = abs(uv * 2.0 - 1.0);
     alpha *= 1.0 - smoothstep(0.94, 1.0, max(frame.x, frame.y));
     gl_FragColor = vec4(color * alpha, alpha);
@@ -195,6 +199,8 @@ var e = class extends HTMLElement {
           let g = a.getUniformLocation(o, `time`),
             _ = a.getUniformLocation(o, `pointer`),
             v = a.getUniformLocation(o, `touch`),
+            darkUniform = a.getUniformLocation(o, `dark`),
+            darkPaper = matchMedia(`(prefers-color-scheme: dark)`),
             y = !1,
             b = !1,
             x = !1,
@@ -211,6 +217,7 @@ var e = class extends HTMLElement {
                 a.uniform1f(g, C),
                 a.uniform2f(_, w, T),
                 a.uniform1f(v, O),
+                a.uniform1f(darkUniform, darkPaper.matches ? 1 : 0),
                 a.drawArrays(a.TRIANGLES, 0, 3),
                 this.hasAttribute(`data-rendered`) || this.setAttribute(`data-rendered`, ``));
             },

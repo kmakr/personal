@@ -15,6 +15,7 @@ const fragmentSource = `
   uniform float time;
   uniform vec2 pointer;
   uniform float touch;
+  uniform float dark;
   uniform float beat;
 
   float hash(vec2 p) {
@@ -102,8 +103,11 @@ const fragmentSource = `
     float highlight = smoothstep(0.3, 0.8, stamp.r) * stamp.a * core;
     float light = 0.012 + depth * 0.045 + folds * 0.46 + filaments;
     light += rim * 0.78 + rimEcho * 0.29 + highlight * 0.16;
-    vec3 color = mix(vec3(0.10), vec3(light), 1.0 - smoothstep(0.68, 0.75, radius));
-    float alpha = max(core, max(wash * 0.64, specks * 0.68));
+    // On dark paper a near-black wash vanishes, so there the ink spreads as a
+    // paler damp stain around the opening instead.
+    float stain = mix(0.10, 0.42, dark);
+    vec3 color = mix(vec3(stain), vec3(light), 1.0 - smoothstep(0.68, 0.75, radius));
+    float alpha = max(core, max(wash * mix(0.64, 0.62, dark), specks * mix(0.68, 0.55, dark)));
     vec2 frame = abs(uv * 2.0 - 1.0);
     alpha *= 1.0 - smoothstep(0.94, 1.0, max(frame.x, frame.y));
     // Premultiplied, the form every browser composites without converting:
@@ -140,6 +144,7 @@ class InkMark extends HTMLElement {
 
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+    const darkPaper = matchMedia('(prefers-color-scheme: dark)');
     let disposeRenderer: (() => void) | undefined;
 
     const configure = () => {
@@ -220,6 +225,7 @@ class InkMark extends HTMLElement {
         const pointerUniform = gl.getUniformLocation(program, 'pointer');
         const touchUniform = gl.getUniformLocation(program, 'touch');
         const beatUniform = gl.getUniformLocation(program, 'beat');
+        const darkUniform = gl.getUniformLocation(program, 'dark');
         let ready = false;
         let visible = false;
         let pageHidden = false;
@@ -237,6 +243,7 @@ class InkMark extends HTMLElement {
           gl.uniform1f(timeUniform, elapsed);
           gl.uniform2f(pointerUniform, x, y);
           gl.uniform1f(touchUniform, touch);
+          gl.uniform1f(darkUniform, darkPaper.matches ? 1 : 0);
           // data-bpm, when set, makes the portal beat at that pulse.
           const bpm = Number(this.dataset.bpm);
           gl.uniform1f(beatUniform, bpm >= 25 && bpm <= 200 ? heartbeat(elapsed, bpm) : 0);
