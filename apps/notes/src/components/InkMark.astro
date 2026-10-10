@@ -24,10 +24,34 @@
     inset: 0;
     opacity: 0;
     pointer-events: none;
+    transition: opacity 0.5s ease-out;
+  }
+
+  /* The still image is only a fallback, and it looks unlike the live portal, so
+     it waits: it appears only if the portal hasn't drawn within 1.5 seconds (no
+     WebGL, or the script failed), and at once when motion is reduced. The live
+     portal fades in, so a refresh never flashes the still mark first. */
+  img {
+    opacity: 0;
+    animation: ink-fallback 0s 1.5s forwards;
+  }
+
+  @keyframes ink-fallback {
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    img {
+      opacity: 1;
+      animation: none;
+    }
   }
 
   ink-mark[data-rendered] img {
     opacity: 0;
+    animation: none;
   }
 
   ink-mark[data-rendered] canvas {

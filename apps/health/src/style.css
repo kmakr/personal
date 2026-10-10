@@ -163,9 +163,29 @@ svg {
   inset: 0;
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.5s ease-out;
+}
+/* The still image is only a fallback and looks unlike the live portal, so it
+   waits 1.5 seconds for the portal to draw (shown at once when motion is
+   reduced). The live portal fades in, so a refresh never flashes the still mark. */
+.site-mark img {
+  opacity: 0;
+  animation: ink-fallback 0s 1.5s forwards;
+}
+@keyframes ink-fallback {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-mark img {
+    opacity: 1;
+    animation: none;
+  }
 }
 .site-mark[data-rendered] img {
   opacity: 0;
+  animation: none;
 }
 .site-mark[data-rendered] canvas {
   opacity: 1;
