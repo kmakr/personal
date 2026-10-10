@@ -603,18 +603,58 @@ ul.blog-posts li time {
 }
 
 /* --- moving between pages ---
-   The portal travels between the homepage and a note's header; the rest of the
-   page settles in like ink spreading in water. */
+   The portal and the name travel between the homepage and a note's header, and
+   a note's title slides from its place in the list up into its heading. The
+   new page spreads in like ink from where the link was pressed; without that
+   point (back, reload) it settles in like ink in water. The opt-in itself is
+   inline at the top of BaseLayout. */
 
-@media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
+.wordmark {
+  view-transition-name: wordmark;
+}
+
+/* Boxes of their own, so a title that wraps still travels as one piece. */
+.item-title,
+.note-title {
+  display: inline-block;
+}
+
+::view-transition-group(*) {
+  animation-duration: 0.6s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@property --ink-reach {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* A soft-edged pool of the new page, widening from the pressed link while the
+   old page stays put beneath it. */
+[data-ink-bloom]::view-transition-new(root) {
+  mask-image: radial-gradient(
+    circle at var(--ink-x) var(--ink-y),
+    #000 var(--ink-reach),
+    transparent calc(var(--ink-reach) + 96px)
+  );
+  animation: ink-bloom 0.8s cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+
+[data-ink-bloom]::view-transition-old(root) {
+  animation: ink-settle 0.8s ease-in both;
+}
+
+@keyframes ink-bloom {
+  to {
+    --ink-reach: 150vmax;
   }
 }
 
-::view-transition-group(portal) {
-  animation-duration: 0.6s;
-  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+@keyframes ink-settle {
+  to {
+    filter: blur(2px);
+  }
 }
 
 ::view-transition-old(root) {

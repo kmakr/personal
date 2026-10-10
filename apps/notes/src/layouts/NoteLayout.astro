@@ -2,7 +2,9 @@
 import BaseLayout from './BaseLayout.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 
-const { title, summary, date, draft = false } = Astro.props;
+const { id, title, summary, date, draft = false } = Astro.props;
+// Matches the homepage list, so the title travels from there into place here.
+const titleName = id ? `note-${id.replace(/[^a-z0-9-]/gi, '-')}` : undefined;
 const dateText = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -22,7 +24,12 @@ const dateText = new Intl.DateTimeFormat('en-GB', {
           </p>
         )
       }
-      <h1>{title}</h1>
+      <h1>
+        <span
+          class="note-title"
+          style={titleName ? `view-transition-name: ${titleName}` : undefined}>{title}</span
+        >
+      </h1>
       <p class="note-summary">{summary}</p>
       <p class="note-meta"><time datetime={date.toISOString()}>{dateText}</time></p>
       <div class="prose"><slot /></div>

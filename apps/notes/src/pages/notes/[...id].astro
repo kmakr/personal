@@ -11,6 +11,6 @@ const { note } = Astro.props;
 const { Content } = await render(note);
 ---
 
-<NoteLayout {...note.data}>
+<NoteLayout {...note.data} id={note.id}>
   <Content />
 </NoteLayout>

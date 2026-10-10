@@ -7,6 +7,8 @@ import NowPlaying from '../components/NowPlaying.astro';
 const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
+// The name a note's title carries from this list into its own page.
+const titleName = (id: string) => `note-${id.replace(/[^a-z0-9-]/gi, '-')}`;
 const dateText = (date: Date) =>
   new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
@@ -21,7 +23,7 @@ const dateText = (date: Date) =>
     <header class="home-intro">
       <h1>
         <InkMark />
-        Theo Azriel
+        <span class="wordmark">Theo Azriel</span>
       </h1>
       <p class="muted">Photographs, notes, and things built for the web.</p>
       <p class="pulse-line" hidden>
@@ -68,7 +70,9 @@ const dateText = (date: Date) =>
       {
         notes.map((note) => (
           <a class="item" href={`/notes/${note.id}`}>
-            <span>{note.data.title}</span>
+            <span class="item-title" style={`view-transition-name: ${titleName(note.id)}`}>
+              {note.data.title}
+            </span>
             <span class="muted">{note.data.summary}</span>
             <time datetime={note.data.date.toISOString()}>{dateText(note.data.date)}</time>
           </a>

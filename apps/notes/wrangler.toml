@@ -22,3 +22,13 @@ custom_domain = true
 pattern = "notes.theoazriel.com"
 custom_domain = true
 
+
+# The ink drops visitors leave on the homepage: one small SQLite-backed object
+# holds the newest few dozen for a week.
+[[durable_objects.bindings]]
+name = "INK_DROPS"
+class_name = "InkDrops"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["InkDrops"]

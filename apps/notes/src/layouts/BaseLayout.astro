@@ -15,6 +15,21 @@ const ogImage = new URL('/og.png', Astro.site);
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    {
+      /* Moving between pages animates (see global.css). The opt-in sits first
+         and inline because the page arrives in pieces: Chrome checks for it as
+         soon as it can, and skips the animation if the stylesheet link hasn't
+         arrived yet. The new page also waits until it has fully arrived, so it
+         is never caught half-built. */
+    }
+    <style is:inline>
+      @media (prefers-reduced-motion: no-preference) {
+        @view-transition {
+          navigation: auto;
+        }
+      }
+    </style>
+    <link rel="expect" href="#page-end" blocking="render" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
@@ -33,6 +48,48 @@ const ogImage = new URL('/og.png', Astro.site);
     <link rel="canonical" href={canonical} />
     <link rel="alternate" type="application/rss+xml" title="Theo Azriel — Notes" href="/feed.xml" />
     <title>{title}</title>
+    <script is:inline>
+      // Following a link on this site, the next page spreads in like ink from
+      // where the link was pressed. The point is handed over for a few seconds
+      // only, so a later back or reload simply fades.
+      addEventListener('click', (event) => {
+        const link = event.target instanceof Element && event.target.closest('a[href]');
+        if (!link || link.origin !== location.origin || link.target) return;
+        const box = link.getBoundingClientRect();
+        // A keyboard press has no pointer position; the link's middle stands in.
+        const keyed = event.detail === 0;
+        const point = {
+          x: Math.round(keyed ? box.left + box.width / 2 : event.clientX),
+          y: Math.round(keyed ? box.top + box.height / 2 : event.clientY),
+          time: Date.now(),
+        };
+        try {
+          sessionStorage.setItem('ink-from', JSON.stringify(point));
+        } catch {
+          // Without storage the page just fades in.
+        }
+      });
+      addEventListener('pagereveal', (event) => {
+        if (!event.viewTransition) return;
+        let point = null;
+        try {
+          point = JSON.parse(sessionStorage.getItem('ink-from') || 'null');
+          sessionStorage.removeItem('ink-from');
+        } catch {
+          return;
+        }
+        if (!point || Date.now() - point.time > 4000) return;
+        const root = document.documentElement;
+        root.style.setProperty('--ink-x', `${point.x}px`);
+        root.style.setProperty('--ink-y', `${point.y}px`);
+        root.dataset.inkBloom = '';
+        event.viewTransition.finished.finally(() => {
+          delete root.dataset.inkBloom;
+          root.style.removeProperty('--ink-x');
+          root.style.removeProperty('--ink-y');
+        });
+      });
+    </script>
   </head>
   <body>
     <slot />
@@ -43,5 +100,6 @@ const ogImage = new URL('/og.png', Astro.site);
         </footer>
       )
     }
+    <div id="page-end" hidden></div>
   </body>
 </html>
