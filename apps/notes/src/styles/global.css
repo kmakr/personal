@@ -77,6 +77,13 @@ h6 {
   font-size: 1em;
   font-weight: 600;
   line-height: 1.65;
+  text-wrap: balance;
+}
+
+/* No word left alone on a paragraph's last line. */
+p,
+.item .muted {
+  text-wrap: pretty;
 }
 
 a {
@@ -159,9 +166,23 @@ blockquote {
   color: var(--muted-color);
 }
 
-footer {
-  padding: 25px 0;
-  color: var(--muted-color);
+/* The page's last line: quiet, small, and a full group's step below. */
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  color: var(--label-color);
+  font-size: var(--text-small);
+  line-height: var(--leading-tight);
+}
+
+.site-footer a {
+  color: var(--label-color);
+}
+
+.site-footer a:hover {
+  color: var(--heading-color);
 }
 
 /* --- site header on note and draft pages --- */
@@ -193,7 +214,8 @@ footer {
 
 /* On dark paper the still mark takes the faint silver rim the live portal has. */
 @media (prefers-color-scheme: dark) {
-  img.mark {
+  img.mark,
+  img.nf-mark {
     filter: drop-shadow(0 0 0.6px #9d9c97) drop-shadow(0 0 6px #ffffff14);
   }
 }
@@ -324,6 +346,28 @@ footer {
 .item .muted {
   display: block;
   margin-top: 2px;
+}
+
+/* A note's date, a small line under its summary. */
+.item time {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--label-color);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Links in a row, separated by a middle dot. */
+.inline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+}
+
+.inline-links a + a::before {
+  content: '·';
+  margin-right: var(--space-2);
+  color: var(--label-color);
 }
 
 /* --- notes --- */

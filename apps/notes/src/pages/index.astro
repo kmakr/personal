@@ -7,6 +7,13 @@ import NowPlaying from '../components/NowPlaying.astro';
 const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
+const dateText = (date: Date) =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 ---
 
 <BaseLayout>
@@ -47,6 +54,7 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
           <a class="item" href={`/notes/${note.id}`}>
             <span>{note.data.title}</span>
             <span class="muted">{note.data.summary}</span>
+            <time datetime={note.data.date.toISOString()}>{dateText(note.data.date)}</time>
           </a>
         ))
       }
@@ -54,9 +62,10 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
 
     <section aria-label="Elsewhere">
       <h2>Elsewhere</h2>
-      <p>
-        <a href="https://github.com/kmakr">GitHub</a><br />
+      <p class="inline-links">
+        <a href="https://github.com/kmakr">GitHub</a>
         <a href="mailto:theo.azriel@icloud.com">Email</a>
+        <a href="/feed.xml">RSS</a>
       </p>
     </section>
   </main>

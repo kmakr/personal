@@ -5,6 +5,7 @@ const {
   title = 'Theo Azriel',
   description = 'Photographs, notes, and things built for the web by Theo Azriel.',
   noindex = false,
+  footer = true,
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('/og.png', Astro.site);
@@ -35,5 +36,12 @@ const ogImage = new URL('/og.png', Astro.site);
   </head>
   <body>
     <slot />
+    {
+      footer && (
+        <footer class="site-footer">
+          <span>© {new Date().getFullYear()} Theo Azriel</span>
+        </footer>
+      )
+    }
   </body>
 </html>

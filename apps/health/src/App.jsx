@@ -46,7 +46,7 @@ async function api(url, body) {
   if (!res.ok) throw new Error(data.error || 'Request failed.');
   return data;
 }
-function Spark({ values, color = '#242424' }) {
+function Spark({ values, color = 'currentColor' }) {
   const valid = values.filter((v) => v != null);
   if (!valid.length) return <div className="spark empty-spark">No data</div>;
   const low = Math.min(...valid) - 3,
@@ -416,12 +416,12 @@ export default function App() {
   const rows = data?.days || [];
   const day = rows.find((r) => r.date === selected) || {};
   const details = {
-    steps: { label: 'Steps', unit: 'steps', color: '#242424' },
-    sleepMinutes: { label: 'Sleep', unit: 'hours', color: '#242424' },
+    steps: { label: 'Steps', unit: 'steps', color: 'currentColor' },
+    sleepMinutes: { label: 'Sleep', unit: 'hours', color: 'currentColor' },
     restingHeartRate: {
       label: 'Resting heart rate',
       unit: 'bpm',
-      color: '#242424',
+      color: 'currentColor',
     },
   };
   const chartKey =
@@ -646,7 +646,7 @@ export default function App() {
               value={format(day.steps)}
               unit="steps"
               values={rows.map((r) => r.steps)}
-              color="#242424"
+              color="currentColor"
               note="Daily movement"
             />
             <Metric
@@ -655,7 +655,7 @@ export default function App() {
               value={duration(day.sleepMinutes)}
               unit=""
               values={rows.map((r) => r.sleepMinutes)}
-              color="#242424"
+              color="currentColor"
               note="All sleep sessions for this date"
             />
             <Metric
@@ -664,7 +664,7 @@ export default function App() {
               value={format(day.restingHeartRate)}
               unit="bpm"
               values={rows.map((r) => r.restingHeartRate)}
-              color="#242424"
+              color="currentColor"
               note="Daily resting measurement"
             />
             <Metric
@@ -673,7 +673,7 @@ export default function App() {
               value={format(day.zoneMinutes)}
               unit="min"
               values={rows.map((r) => r.zoneMinutes)}
-              color="#242424"
+              color="currentColor"
               note="Intensity-weighted activity"
             />
           </section>
@@ -846,9 +846,9 @@ export default function App() {
               </div>
               <p className="panel-description">Measurements from the selected date.</p>
               {[
-                [Heart, 'Heart rate variability', 'hrv', 'ms', '#242424'],
-                [Wind, 'Breathing rate', 'respiratoryRate', 'breaths/min', '#242424'],
-                [Activity, 'Blood oxygen', 'oxygen', '%', '#242424'],
+                [Heart, 'Heart rate variability', 'hrv', 'ms', 'currentColor'],
+                [Wind, 'Breathing rate', 'respiratoryRate', 'breaths/min', 'currentColor'],
+                [Activity, 'Blood oxygen', 'oxygen', '%', 'currentColor'],
               ].map(([Icon, label, key, unit, color]) => (
                 <div className="vital" key={key}>
                   <span className="vital-icon" style={{ color }}>

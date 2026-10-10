@@ -4,12 +4,11 @@ import SiteHeader from '../components/SiteHeader.astro';
 
 const { title, summary, date, draft = false } = Astro.props;
 const dateText = new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit',
+  day: 'numeric',
   month: 'short',
   year: 'numeric',
-})
-  .format(date)
-  .replace(/ (\d{4})$/, ', $1');
+  timeZone: 'UTC',
+}).format(date);
 ---
 
 <BaseLayout title={`${title} — Theo Azriel`} description={summary} noindex={draft}>
