@@ -3,7 +3,7 @@
    note prose where they keep a light underline for affordance. */
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --width: 40rem;
   --background-color: #fff;
   --heading-color: #141414;
@@ -14,6 +14,7 @@
   --underline-color: #d4d4d4;
   --code-background-color: #f4f4f4;
   --code-color: #222;
+  --hover-color: #f4f4f3;
   /* Spacing comes only from this scale. The closer two things are related, the
      smaller the step between them: parts of one thing, things in a group,
      groups, then the major parts of the page. */
@@ -27,6 +28,24 @@
   --text-small: 0.875rem;
   /* Paragraphs breathe at 1.65; a short label and its line set closer. */
   --leading-tight: 1.4;
+}
+
+/* Dark: the same grayscale turned over, ink-light text on near-black paper with
+   a trace of the portal's warmth. The portal itself stays a dark opening, read
+   by its bright rim. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #141413;
+    --heading-color: #ececea;
+    --text-color: #ececea;
+    --muted-color: #a3a3a0;
+    --label-color: #82827f;
+    --rule-color: #2a2a29;
+    --underline-color: #474745;
+    --code-background-color: #1f1f1e;
+    --code-color: #dcdcda;
+    --hover-color: #1d1d1c;
+  }
 }
 
 * {
@@ -172,6 +191,13 @@ footer {
   margin-left: -6px; /* optically align the round edge with the text's left stroke */
 }
 
+/* On dark paper the still mark takes the faint silver rim the live portal has. */
+@media (prefers-color-scheme: dark) {
+  img.mark {
+    filter: drop-shadow(0 0 0.6px #9d9c97) drop-shadow(0 0 6px #ffffff14);
+  }
+}
+
 .site-header .title:hover {
   color: var(--muted-color);
 }
@@ -214,7 +240,7 @@ footer {
   font-weight: 400;
   color: var(--label-color);
   line-height: var(--leading-tight);
-  margin: 0;
+  margin: 0 0 var(--space-2);
 }
 
 .home section p {
@@ -272,13 +298,16 @@ footer {
 }
 
 /* list items: the whole block links, and lights up softly on hover. The text
-   lines up with the page edge; the padding hangs into the margin. Items sit
-   20px apart, text to text: 8px padding, 4px gap, 8px padding. */
+   lines up with the page edge; the padding hangs a little into the margin.
+   Items sit 20px apart, text to text: 6px padding, 8px gap, 6px padding. The
+   highlight stays a small step inside that rhythm, never touching a heading. */
 .item {
+  --item-pad: 6px;
+  --item-hang: 12px;
   display: block;
-  padding: var(--space-2) var(--space-3);
-  margin: 0 calc(-1 * var(--space-3)) var(--space-1);
-  border-radius: 10px;
+  padding: var(--item-pad) var(--item-hang);
+  margin: 0 calc(-1 * var(--item-hang)) var(--space-2);
+  border-radius: 8px;
   line-height: var(--leading-tight);
   transition: background-color 0.15s ease;
 }
@@ -289,7 +318,7 @@ footer {
 
 .item:hover {
   color: inherit;
-  background-color: #f4f4f3;
+  background-color: var(--hover-color);
 }
 
 .item .muted {

@@ -75,9 +75,10 @@ function threads() {
     const radius = portal.width * 0.33;
     const sx = portal.left + portal.width / 2 - box.left - radius * 0.6;
     const sy = portal.top + portal.height / 2 - box.top + radius * 0.55;
-    const margin = -16;
+    // Just outside the list highlight's edge (12px), and never off the screen.
+    const margin = Math.max(-24, 6 - box.left);
     // List items have padding before their text; the Spotify cover starts at the edge.
-    const tx = item.left - box.left + (target.matches('.item') ? 8 : -6);
+    const tx = item.left - box.left + (target.matches('.item') ? 6 : -6);
     const ty = item.top - box.top + Math.min(item.height / 2, 22);
     const group = document.createElementNS(SVG, 'g');
     group.setAttribute('filter', 'url(#thread-ink)');

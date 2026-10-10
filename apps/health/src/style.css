@@ -1,12 +1,12 @@
 /* Same type, column width, ink, and spacing as theoazriel.com. */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.65;
   font-weight: 400;
-  color: #141414;
-  background: #fff;
+  color: var(--fg);
+  background: var(--bg);
   font-synthesis: none;
   --muted: #6f6f6f;
   --label: #8a8a8a;
@@ -16,6 +16,46 @@
   --text-caption: 0.75rem;
   --radius: 4px;
   --radius-lg: 10px;
+  /* Paper, ink, and the greys between, from paper to ink. */
+  --bg: #fff;
+  --fg: #141414;
+  --fill: #242424;
+  --fill-hover: #444;
+  --on-fill: #fff;
+  --surface: #f4f4f4;
+  --line-faint: #f0f0f0;
+  --line-soft: #ddd;
+  --gray-2: #ccc;
+  --gray-3: #aaa;
+  --gray-4: #999;
+  --gray-5: #777;
+  --gray-6: #555;
+  --shadow: #0002;
+  --scrim: #0003;
+}
+/* Dark: the same scale turned over, as on theoazriel.com. Ink becomes light
+   on near-black paper; the portal stays a dark opening with a bright rim. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413;
+    --fg: #ececea;
+    --fill: #e6e6e3;
+    --fill-hover: #c8c8c5;
+    --on-fill: #141413;
+    --surface: #1f1f1e;
+    --line-faint: #222221;
+    --line-soft: #333331;
+    --gray-2: #474745;
+    --gray-3: #5c5c5a;
+    --gray-4: #6e6e6b;
+    --gray-5: #8f8f8b;
+    --gray-6: #b5b5b1;
+    --shadow: #0009;
+    --scrim: #0007;
+    --muted: #a3a3a0;
+    --label: #82827f;
+    --rule: #2a2a29;
+  }
 }
 * {
   box-sizing: border-box;
@@ -57,7 +97,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 1px solid #141414;
+  outline: 1px solid var(--fg);
   outline-offset: 4px;
 }
 h1,
@@ -146,21 +186,21 @@ svg {
   white-space: nowrap;
 }
 .primary {
-  color: #fff;
-  background: #242424;
-  border-color: #242424;
+  color: var(--on-fill);
+  background: var(--fill);
+  border-color: var(--fill);
 }
 .primary:hover {
-  color: #fff;
-  background: #444;
+  color: var(--on-fill);
+  background: var(--fill-hover);
 }
 .secondary {
-  background: #fff;
+  background: var(--bg);
   color: var(--muted);
 }
 .secondary:hover {
-  color: #141414;
-  border-color: #999;
+  color: var(--fg);
+  border-color: var(--gray-4);
 }
 .sync {
   border: 0;
@@ -184,18 +224,18 @@ svg {
   border-bottom: 1px solid transparent;
 }
 .health-nav button.active {
-  color: #141414;
-  border-bottom-color: #141414;
+  color: var(--fg);
+  border-bottom-color: var(--fg);
 }
 .health-nav button:hover {
-  color: #141414;
+  color: var(--fg);
 }
 .connect-banner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  background: #f6f6f5;
+  background: var(--surface);
   padding: 18px 20px;
   margin-bottom: 2rem;
   border-radius: 4px;
@@ -216,7 +256,7 @@ svg {
   margin-top: 5px;
 }
 .message {
-  border-left: 1px solid #aaa;
+  border-left: 1px solid var(--gray-3);
   padding: 3px 0 3px 16px;
   margin-bottom: 2rem;
   color: var(--muted);
@@ -227,7 +267,7 @@ svg {
   float: right;
 }
 .error {
-  color: #555;
+  color: var(--gray-6);
 }
 .period-row {
   display: flex;
@@ -261,7 +301,7 @@ svg {
   border-radius: 3px;
 }
 .icon-button:hover {
-  background: #f4f4f3;
+  background: var(--surface);
 }
 .date-control input {
   border: 0;
@@ -338,7 +378,7 @@ svg {
   color: var(--muted);
 }
 .goal-panel > div > span:last-child {
-  color: #141414;
+  color: var(--fg);
   font-variant-numeric: tabular-nums;
 }
 .goal-panel progress {
@@ -348,16 +388,16 @@ svg {
   margin-top: 12px;
   border: 0;
   appearance: none;
-  accent-color: #242424;
+  accent-color: var(--fill);
 }
 .goal-panel progress::-webkit-progress-bar {
-  background: #eee;
+  background: var(--line-faint);
 }
 .goal-panel progress::-webkit-progress-value {
-  background: #242424;
+  background: var(--fill);
 }
 .goal-panel progress::-moz-progress-bar {
-  background: #242424;
+  background: var(--fill);
 }
 .goal-panel p {
   font-size: 0.6875rem;
@@ -403,8 +443,8 @@ svg {
   border-bottom: 1px solid transparent;
 }
 .segmented .active {
-  color: #141414;
-  border-bottom-color: #141414;
+  color: var(--fg);
+  border-bottom-color: var(--fg);
 }
 .chart-toolbar {
   display: flex;
@@ -473,7 +513,7 @@ svg {
   justify-content: space-between;
 }
 .grid-lines i {
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--line-faint);
   width: 100%;
 }
 .bars {
@@ -522,7 +562,7 @@ svg {
   color: var(--muted);
 }
 .bar-column.selected .bar-label {
-  color: #141414;
+  color: var(--fg);
 }
 .bar-value {
   visibility: hidden;
@@ -530,8 +570,8 @@ svg {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background: #242424;
-  color: #fff;
+  background: var(--fill);
+  color: var(--on-fill);
   padding: 3px 7px;
   border-radius: 3px;
   font-size: 0.625rem;
@@ -619,24 +659,24 @@ svg {
   overflow: visible;
 }
 .stage-line {
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--line-faint);
   width: 100%;
 }
 .stage-AWAKE {
-  fill: #ddd;
-  background: #ddd;
+  fill: var(--line-soft);
+  background: var(--line-soft);
 }
 .stage-REM {
-  fill: #aaa;
-  background: #aaa;
+  fill: var(--gray-3);
+  background: var(--gray-3);
 }
 .stage-LIGHT {
-  fill: #777;
-  background: #777;
+  fill: var(--gray-5);
+  background: var(--gray-5);
 }
 .stage-DEEP {
-  fill: #242424;
-  background: #242424;
+  fill: var(--fill);
+  background: var(--fill);
 }
 .sleep-axis {
   display: flex;
@@ -751,15 +791,15 @@ footer button {
 dialog {
   width: min(580px, calc(100vw - 32px));
   max-height: calc(100vh - 40px);
-  border: 1px solid #ddd;
+  border: 1px solid var(--line-soft);
   border-radius: 6px;
   padding: 0;
-  color: #141414;
-  background: white;
-  box-shadow: 0 12px 80px #0002;
+  color: var(--fg);
+  background: var(--bg);
+  box-shadow: 0 12px 80px var(--shadow);
 }
 dialog::backdrop {
-  background: #0003;
+  background: var(--scrim);
 }
 .setup {
   padding: 32px;
@@ -805,14 +845,14 @@ dialog::backdrop {
   height: 22px;
   width: 22px;
   border-radius: 50%;
-  background: #f4f4f4;
+  background: var(--surface);
 }
 .setup-steps button.active {
-  color: #141414;
+  color: var(--fg);
 }
 .setup-steps button.active span {
-  color: white;
-  background: #242424;
+  color: var(--on-fill);
+  background: var(--fill);
 }
 .setup-content {
   padding-top: 24px;
@@ -833,10 +873,10 @@ dialog::backdrop {
   margin-bottom: 11px;
 }
 .setup li a {
-  color: #141414;
+  color: var(--fg);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: #ccc;
+  text-decoration-color: var(--gray-2);
 }
 .setup li a svg {
   display: inline;
@@ -850,7 +890,7 @@ dialog::backdrop {
 }
 .scope-list code {
   font-size: 0.625rem;
-  background: #f4f4f4;
+  background: var(--surface);
   display: block;
   padding: 4px 6px;
   overflow-wrap: anywhere;
@@ -859,13 +899,13 @@ dialog::backdrop {
   display: block;
   padding: 10px;
   font-size: 0.625rem;
-  background: #f4f4f4;
+  background: var(--surface);
   margin-top: 8px;
   overflow-wrap: anywhere;
 }
 .upload {
   position: relative;
-  border: 1px dashed #aaa;
+  border: 1px dashed var(--gray-3);
   border-radius: 4px;
   padding: 24px;
   display: flex;
@@ -891,7 +931,7 @@ dialog::backdrop {
   height: 100%;
 }
 .upload:focus-within {
-  outline: 1px solid #141414;
+  outline: 1px solid var(--fg);
   outline-offset: 4px;
 }
 .setup-content > p {
@@ -905,7 +945,7 @@ dialog::backdrop {
   align-items: flex-start;
   gap: 10px;
   padding: 15px;
-  background: #f6f6f5;
+  background: var(--surface);
   border-radius: 4px;
 }
 .setup-content .fine {
@@ -913,7 +953,7 @@ dialog::backdrop {
   margin-top: 18px;
 }
 .setup-content p.error {
-  border-left: 1px solid #aaa;
+  border-left: 1px solid var(--gray-3);
   padding-left: 10px;
   margin: 12px 0 0;
 }
@@ -1006,9 +1046,21 @@ dialog::backdrop {
 /* Garden: drawn in the homepage portal's ink on white paper. The selected
    flower gets the portal's silver rim; nothing else on the page is coloured. */
 .garden-page {
-  --ink: #141414;
+  --ink: var(--fg);
   --ink-faint: #b3b3b0;
   --ink-rim: #9d9c97;
+  --ground: #d4d4d2;
+  --root-light: #4a4a48;
+  --root-rem: #6e6e6b;
+}
+@media (prefers-color-scheme: dark) {
+  .garden-page {
+    --ink-faint: #5c5c5a;
+    --ink-rim: #8f8f8b;
+    --ground: #333331;
+    --root-light: #b5b5b1;
+    --root-rem: #8f8f8b;
+  }
 }
 .garden-intro {
   color: var(--muted);
@@ -1028,7 +1080,7 @@ dialog::backdrop {
   align-items: center;
   gap: 0.35rem;
   padding: 0;
-  color: #141414;
+  color: var(--fg);
   font-size: inherit;
 }
 .garden-loading {
@@ -1092,7 +1144,7 @@ dialog::backdrop {
   overflow: visible;
 }
 .plant-ground {
-  stroke: #d4d4d2;
+  stroke: var(--ground);
   fill: none;
   stroke-width: 1;
 }
@@ -1140,7 +1192,7 @@ dialog::backdrop {
 }
 .plant-zero,
 .plant-missing {
-  fill: #fff;
+  fill: var(--bg);
   stroke: var(--ink-faint);
   stroke-width: 1;
 }
@@ -1275,11 +1327,11 @@ div.garden-roots {
 }
 .root-branch.light {
   stroke-width: 1.1;
-  stroke: #4a4a48;
+  stroke: var(--root-light);
 }
 .root-branch.rem {
   stroke-width: 0.6;
-  stroke: #6e6e6b;
+  stroke: var(--root-rem);
 }
 .key-root {
   width: 2px;

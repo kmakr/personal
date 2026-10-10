@@ -44,7 +44,7 @@
     width: 36px;
     height: 36px;
     border-radius: 3px;
-    background: #f4f4f4;
+    background: var(--code-background-color);
   }
   /* Grooves in ink, with the homepage portal as the centre label. */
   .record {
@@ -58,6 +58,12 @@
       radial-gradient(circle, transparent 0 5.5px, #141414 6px),
       repeating-radial-gradient(circle, #141414 0 1px, #2b2b2b 1.3px 2px);
     transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  /* On dark paper a black record needs its edge catching the light. */
+  @media (prefers-color-scheme: dark) {
+    .record {
+      box-shadow: 0 0 0 1px #3a3a38;
+    }
   }
   .label {
     position: absolute;
