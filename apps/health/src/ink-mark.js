@@ -22,7 +22,7 @@ var e = class extends HTMLElement {
           alpha: !0,
           antialias: !1,
           depth: !1,
-          premultipliedAlpha: !1,
+          premultipliedAlpha: !0,
         });
         if (!a) return;
         let o = a.createProgram(),
@@ -171,7 +171,7 @@ var e = class extends HTMLElement {
     float alpha = max(core, max(wash * 0.64, specks * 0.68));
     vec2 frame = abs(uv * 2.0 - 1.0);
     alpha *= 1.0 - smoothstep(0.94, 1.0, max(frame.x, frame.y));
-    gl_FragColor = vec4(color, alpha);
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `,
             ),

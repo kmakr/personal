@@ -106,7 +106,9 @@ const fragmentSource = `
     float alpha = max(core, max(wash * 0.64, specks * 0.68));
     vec2 frame = abs(uv * 2.0 - 1.0);
     alpha *= 1.0 - smoothstep(0.94, 1.0, max(frame.x, frame.y));
-    gl_FragColor = vec4(color, alpha);
+    // Premultiplied, the form every browser composites without converting:
+    // Safari added the bare colour onto dark paper as a grey square.
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `;
 
@@ -151,7 +153,7 @@ class InkMark extends HTMLElement {
         alpha: true,
         antialias: false,
         depth: false,
-        premultipliedAlpha: false,
+        premultipliedAlpha: true,
       });
       if (!gl) return;
 
