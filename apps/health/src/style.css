@@ -1436,6 +1436,12 @@ div.garden-roots {
 .garden-plot {
   position: relative;
 }
+/* The moth waits beyond the right edge of the screen before its first flight.
+   Clip it there so the page never scrolls sideways; clip, unlike hidden, adds
+   no scroll container and leaves the vertical overflow alone. */
+.garden-page {
+  overflow-x: clip;
+}
 .garden-moth {
   opacity: 0;
   position: absolute;

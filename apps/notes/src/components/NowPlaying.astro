@@ -22,14 +22,15 @@
 <style>
   /* A compact line in the introduction, under the pulse. */
   .listening {
-    margin-top: 1rem;
+    margin-top: var(--space-2);
   }
   .now-playing {
     display: flex;
     align-items: center;
-    gap: 1.1rem;
+    gap: var(--space-3);
     max-width: 100%;
-    line-height: 1.4;
+    font-size: var(--text-small);
+    line-height: var(--leading-tight);
   }
   .sleeve {
     position: relative;
@@ -89,11 +90,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.875rem;
   }
   .label-line {
     color: var(--label-color);
-    font-size: 0.8125rem;
   }
   .listening[data-playing] .state::before {
     content: '';

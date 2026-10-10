@@ -339,8 +339,11 @@ function Moth({ plot, day, maxSteps, animation, breath }) {
       const scale = Math.min(box.width / 48, box.height / 152);
       const height =
         day.steps == null ? 28 : day.steps === 0 ? 0 : 18 + (day.steps / maxSteps) * 89;
-      // Land beside the flower head, so the moth never hides the flower.
-      const side = day.steps > 0 ? 14 : 0;
+      // Land beside the flower head, so the moth never hides the flower: on its
+      // right, unless that would leave the moth hanging off the screen's edge.
+      // The moth's right edge sits about 28px right of the flower's centre.
+      const roomRight = box.left + box.width / 2 + 28 < document.documentElement.clientWidth - 8;
+      const side = day.steps > 0 ? (roomRight ? 14 : -14) : 0;
       // The moth is about 24px tall, so +10 centres it on the head.
       const to = {
         x: box.left - garden.left + box.width / 2 + side,
