@@ -152,6 +152,10 @@ svg {
   /* The homepage portal's size; optically align its round edge with the name. */
   margin-left: -12px;
 }
+/* The still, in pale ink on dark paper; the picture itself takes no box. */
+.site-mark picture.still {
+  display: contents;
+}
 .site-mark img,
 .site-mark canvas {
   display: block;

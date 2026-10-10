@@ -5,7 +5,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 <BaseLayout title="404 — Theo Azriel" noindex footer={false}>
   <main class="not-found">
     <a href="/" aria-label="Theo Azriel home"
-      ><img class="nf-mark" src="/favicon.svg" alt="" width="160" height="160" /></a
+      ><picture class="still"
+        ><source srcset="/mark-dark.png" media="(prefers-color-scheme: dark)" /><img
+          class="nf-mark"
+          src="/mark.png"
+          alt=""
+          width="160"
+          height="160"
+        /></picture
+      ></a
     >
     <p class="nf-line">404 — nothing here</p>
   </main>

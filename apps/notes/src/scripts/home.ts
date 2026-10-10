@@ -1,6 +1,6 @@
 // The homepage's live touches: the portal beats at my resting heart rate,
-// hovering a link draws an ink thread from the portal down to it, and each
-// project shows a small preview of itself. Ink drops come from ink-drops.ts.
+// hovering a link turns its ink toward it, and each project shows a small
+// preview of itself. Ink drops come from ink-drops.ts.
 import './ink-drops';
 type InkMark = HTMLElement & { lean(x: number, y: number): void; rest(): void };
 type Day = {
@@ -42,7 +42,6 @@ async function pulse() {
 
 // --- Project previews ----------------------------------------------------------
 
-const SVG = 'http://www.w3.org/2000/svg';
 const canHover = matchMedia('(hover: hover) and (pointer: fine)');
 // Matches the stylesheet: previews sit in the right margin of wide screens.
 const showsPreviews = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 56rem)');
@@ -92,104 +91,37 @@ async function galleryPreview() {
   }
 }
 
-// --- Ink threads ---------------------------------------------------------------
+// --- Glances ------------------------------------------------------------------
 
-function threads() {
+// Hovering or focusing a link turns the portal toward it, and the current in
+// its water carries the ink that way.
+function glances() {
   if (!mark || !home || reduced.matches) return;
-  const layer = document.createElementNS(SVG, 'svg');
-  layer.classList.add('ink-threads');
-  layer.setAttribute('aria-hidden', 'true');
-  layer.innerHTML = `
-    <filter id="thread-ink" x="-20%" y="-5%" width="140%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" />
-      <feDisplacementMap in="SourceGraphic" scale="2.2" />
-    </filter>`;
-  home.prepend(layer);
-  let current: { target: Element; group: SVGGElement } | null = null;
-
-  const fade = (group: SVGGElement) => {
-    group
-      .animate(
-        [
-          { opacity: 1, strokeWidth: 1.3 },
-          { opacity: 0, strokeWidth: 3 },
-        ],
-        { duration: 600, easing: 'ease-out', fill: 'forwards' },
-      )
-      .finished.then(
-        () => group.remove(),
-        () => group.remove(),
-      );
-  };
-
-  const draw = (target: Element) => {
-    if (current?.target === target) return;
-    if (current) fade(current.group);
-    const box = home.getBoundingClientRect();
+  let current: Element | null = null;
+  const turn = (target: Element) => {
+    current = target;
     const portal = mark.getBoundingClientRect();
     const item = target.getBoundingClientRect();
-    // From the lower left of the opening straight out into the left margin, down
-    // the margin, then curling in to the link, so it never crosses the text.
-    const radius = portal.width * 0.33;
-    const sx = portal.left + portal.width / 2 - box.left - radius * 0.6;
-    const sy = portal.top + portal.height / 2 - box.top + radius * 0.55;
-    // Just outside the list highlight's edge (12px), and never off the screen.
-    const margin = Math.max(-24, 6 - box.left);
-    // List items have padding before their text; the Spotify cover starts at the edge.
-    const tx = item.left - box.left + (target.matches('.item') ? 6 : -6);
-    const ty = item.top - box.top + Math.min(item.height / 2, 22);
-    const group = document.createElementNS(SVG, 'g');
-    group.setAttribute('filter', 'url(#thread-ink)');
-    const path = document.createElementNS(SVG, 'path');
-    path.setAttribute(
-      'd',
-      `M${sx} ${sy} Q${margin} ${sy + 2}, ${margin} ${sy + 34} L${margin} ${ty - 30} Q${margin} ${ty}, ${tx} ${ty}`,
-    );
-    const dot = document.createElementNS(SVG, 'circle');
-    dot.setAttribute('cx', String(tx));
-    dot.setAttribute('cy', String(ty));
-    dot.setAttribute('r', '2.2');
-    group.append(path, dot);
-    layer.append(group);
-    const length = path.getTotalLength();
-    path.style.strokeDasharray = `${length}`;
-    path.animate([{ strokeDashoffset: length }, { strokeDashoffset: 0 }], {
-      duration: Math.min(700, 260 + length * 0.9),
-      easing: 'cubic-bezier(.3,.6,.2,1)',
-      fill: 'both',
-    });
-    dot.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: 260,
-      delay: Math.min(620, 200 + length * 0.9),
-      fill: 'both',
-    });
-    // The opening turns toward the link.
     const dx = item.left + 20 - (portal.left + portal.width / 2);
     const dy = item.top + item.height / 2 - (portal.top + portal.height / 2);
     const distance = Math.hypot(dx, dy) || 1;
     mark.lean((dx / distance) * 0.9, (-dy / distance) * 0.9);
-    current = { target, group };
   };
-
   const release = (target: Element) => {
-    if (current?.target !== target) return;
-    fade(current.group);
+    if (current !== target) return;
     current = null;
     mark.rest();
   };
-
   const links = home.querySelectorAll<HTMLElement>('a.item, a.now-playing');
   for (const link of links) {
-    link.addEventListener('pointerenter', () => canHover.matches && draw(link));
+    link.addEventListener('pointerenter', () => canHover.matches && turn(link));
     link.addEventListener('pointerleave', () => release(link));
-    link.addEventListener('focus', () => link.matches(':focus-visible') && draw(link));
+    link.addEventListener('focus', () => link.matches(':focus-visible') && turn(link));
     link.addEventListener('blur', () => release(link));
   }
-  // Positions change on resize; drop the thread rather than leave it misplaced.
-  addEventListener('resize', () => current && release(current.target));
 }
 
 pulse();
-threads();
+glances();
 healthPreview();
 galleryPreview();

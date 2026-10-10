@@ -145,14 +145,14 @@ function drops() {
         // It still dries here; it just isn't kept for the next visitor.
       });
     }
-    // The portal glances toward the drop, unless a thread already holds it.
-    if (canLean && !document.querySelector('.ink-threads g')) {
+    // The portal glances toward the drop.
+    if (canLean) {
       const portal = mark!.getBoundingClientRect();
       const dx = clientX - (portal.left + portal.width / 2);
       const dy = clientY - (portal.top + portal.height / 2);
       const distance = Math.hypot(dx, dy) || 1;
       mark!.lean!((dx / distance) * 0.7, (-dy / distance) * 0.7);
-      setTimeout(() => !document.querySelector('.ink-threads g') && mark!.rest!(), 700);
+      setTimeout(() => mark!.rest!(), 700);
     }
   };
 

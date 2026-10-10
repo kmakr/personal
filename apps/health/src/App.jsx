@@ -487,7 +487,13 @@ export default function App() {
       <header className="site-header">
         <a className="title" href="https://theoazriel.com/" aria-label="Theo Azriel home">
           <ink-mark class="site-mark" aria-hidden="true" data-ink-state="static">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="96" height="96" />
+            <picture className="still">
+              <source
+                srcSet={`${import.meta.env.BASE_URL}mark-dark.png`}
+                media="(prefers-color-scheme: dark)"
+              />
+              <img src={`${import.meta.env.BASE_URL}mark.png`} alt="" width="96" height="96" />
+            </picture>
             <canvas width="192" height="192" />
           </ink-mark>
           <span>Theo Azriel</span>
