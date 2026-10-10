@@ -1,0 +1,7 @@
+# The homepage at theoazriel.com reads the list of small prints.
+/preview.json
+  Access-Control-Allow-Origin: https://theoazriel.com
+  Cache-Control: public, max-age=3600
+
+/preview/*
+  Cache-Control: public, max-age=86400

@@ -31,19 +31,35 @@ const dateText = (date: Date) =>
       <NowPlaying />
     </header>
 
-    <section aria-label="Projects">
+    <section class="projects" aria-label="Projects">
       <h2>Projects</h2>
       <a class="item" href="https://home.theoazriel.com">
         <span>Home</span>
         <span class="muted">A quiet room of sunlight, with leaves moving on the wall.</span>
+        <span class="peek peek-home" aria-hidden="true">
+          <svg viewBox="0 0 84 52">
+            <g class="leaf-shadows">
+              <ellipse cx="14" cy="10" rx="9" ry="4" transform="rotate(-30 14 10)"></ellipse>
+              <ellipse cx="30" cy="6" rx="7" ry="3" transform="rotate(20 30 6)"></ellipse>
+              <ellipse cx="24" cy="22" rx="8" ry="3.5" transform="rotate(-50 24 22)"></ellipse>
+              <ellipse cx="44" cy="14" rx="6" ry="2.6" transform="rotate(35 44 14)"></ellipse>
+              <ellipse cx="8" cy="30" rx="6" ry="2.8" transform="rotate(10 8 30)"></ellipse>
+              <path d="M-4 2 Q20 14 52 8"></path>
+            </g>
+          </svg>
+        </span>
       </a>
       <a class="item" href="/health/">
         <span>Health</span>
         <span class="muted">A garden of my steps and sleep, with a moth and a heartbeat.</span>
+        <span class="peek peek-health" aria-hidden="true"></span>
       </a>
       <a class="item" href="https://gallery.theoazriel.com">
         <span>Gallery</span>
         <span class="muted">Photographs. Places, mostly quiet ones.</span>
+        <span class="peek peek-gallery" aria-hidden="true"
+          ><img alt="" width="72" height="48" /></span
+        >
       </a>
     </section>
 
