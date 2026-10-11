@@ -1,6 +1,6 @@
 // Ink mark from the live theoazriel.com homepage (apps/notes/src/scripts/ink-mark.ts
-// and portal-base.ts), bundled on 2026-10-10.
-// ../notes/src/scripts/portal-base.ts
+// and portal-base.ts), bundled on 2026-10-11.
+// apps/notes/src/scripts/portal-base.ts
 function heartbeat(seconds, bpm) {
   const phase = seconds % (60 / bpm);
   return Math.exp(-((phase / 0.07) ** 2)) + 0.5 * Math.exp(-(((phase - 0.22) / 0.06) ** 2));
@@ -231,7 +231,7 @@ function definePortal(
   if (!customElements.get('ink-mark')) customElements.define('ink-mark', Portal);
 }
 
-// ../notes/src/scripts/ink-mark.ts
+// apps/notes/src/scripts/ink-mark.ts
 var SPREAD = 2.8;
 var LEFT = -0.3;
 var TOP = 1.12 - SPREAD;
@@ -240,6 +240,51 @@ var originOf = (size) => ({
   x: ((0.5 - LEFT) / SPREAD) * size,
   y: ((0.5 - TOP) / SPREAD) * size,
 });
+var smooth = (from, to, x) => {
+  const t = Math.max(0, Math.min(1, (x - from) / (to - from)));
+  return t * t * (3 - 2 * t);
+};
+function cloud(size, origin) {
+  const side = Math.max(1, Math.round(size / 2));
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = side;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(side, side);
+  const alpha = new Float32Array(side * side);
+  const ragged = noise(5);
+  const mx = origin.x / size;
+  const my = origin.y / size;
+  const tx = 0.6;
+  const ty = 0.47;
+  for (let j = 0; j < side; j++) {
+    for (let i = 0; i < side; i++) {
+      const u = (i + 0.5) / side;
+      const v = (j + 0.5) / side;
+      const n = 0.9 + 0.3 * (ragged(u * 7, v * 7) * 0.7 + ragged(u * 17 + 9, v * 17) * 0.3);
+      const below = v > my ? 1.3 : 1;
+      const r = Math.hypot(u - mx, (v - my) * below) * n;
+      const mark = 1 - smooth(0.16, 0.25, r);
+      const dx = tx - mx;
+      const dy = ty - my;
+      const along = Math.max(0, Math.min(1, ((u - mx) * dx + (v - my) * dy) / (dx * dx + dy * dy)));
+      const d = Math.hypot(u - mx - along * dx, v - my - along * dy) * n;
+      const trail = 1 - smooth(0.05, 0.2, d);
+      const edge = smooth(0, 0.04, Math.min(u, v, 1 - u, 1 - v));
+      const a = Math.max(mark, trail) * edge;
+      alpha[i + j * side] = a;
+      image.data[(i + j * side) * 4 + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return {
+    canvas,
+    at(x, y) {
+      const i = Math.floor((x / size) * side);
+      const j = Math.floor((y / size) * side);
+      return i < 0 || j < 0 || i >= side || j >= side ? 0 : alpha[i + j * side];
+    },
+  };
+}
 function water(size, origin) {
   const next = random(17);
   const broad = noise(3);
@@ -252,6 +297,7 @@ function water(size, origin) {
   };
   const washLayer = layer(Math.round(size / 4));
   const threadLayer = layer(size);
+  const shows = cloud(size, origin);
   const source = origin;
   let seep = 0;
   let clearing = 0;
@@ -367,32 +413,16 @@ function water(size, origin) {
         mote.x = nx;
         mote.y = ny;
         mote.age += step;
-        const margin = 28 * unit;
-        const gone = nx < margin || ny < margin || nx > size2 - margin || ny > size2 - 8 * unit;
-        if (gone || mote.age > mote.life) motes.splice(i, 1);
+        if (shows.at(nx, ny) < 0.02 || mote.age > mote.life) motes.splice(i, 1);
       }
       clearing += step;
       const clear = clearing >= 5;
       if (clear) clearing -= 5;
       const settle = (layer2, rate) => {
         const side = layer2.canvas.width;
-        const k = side / size2;
         layer2.globalCompositeOperation = 'destination-out';
         if (clear) {
           layer2.fillStyle = `rgba(0,0,0,${rate * 5})`;
-          layer2.fillRect(0, 0, side, side);
-        }
-        const edges = [
-          [0, 0, 0, 40 * unit * k],
-          [0, side, 0, side - 12 * unit * k],
-          [0, 0, 40 * unit * k, 0],
-          [side, 0, side - 40 * unit * k, 0],
-        ];
-        for (const [x0, y0, x1, y1] of edges) {
-          const fade = layer2.createLinearGradient(x0, y0, x1, y1);
-          fade.addColorStop(0, `rgba(0,0,0,${Math.min(1, 0.35 * step)})`);
-          fade.addColorStop(1, 'rgba(0,0,0,0)');
-          layer2.fillStyle = fade;
           layer2.fillRect(0, 0, side, side);
         }
         layer2.globalCompositeOperation = 'source-over';
@@ -415,6 +445,9 @@ function water(size, origin) {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(washLayer.canvas, 0, 0, size2, size2);
       ctx.drawImage(threadLayer.canvas, 0, 0);
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(shows.canvas, 0, 0, size2, size2);
+      ctx.globalCompositeOperation = 'source-over';
     },
   };
 }

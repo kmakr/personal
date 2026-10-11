@@ -31,6 +31,61 @@ const originOf = (size: number) => ({
   y: ((0.5 - TOP) / SPREAD) * size,
 });
 
+const smooth = (from: number, to: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - from) / (to - from)));
+  return t * t * (3 - 2 * t);
+};
+
+// Where the ink can show: solid over the mark, trailing up and to the right
+// along the current, with a ragged edge that thins to nothing well inside the
+// canvas, so the ink never meets a straight side or the top of the page.
+function cloud(size: number, origin: { x: number; y: number }) {
+  const side = Math.max(1, Math.round(size / 2));
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = side;
+  const ctx = canvas.getContext('2d')!;
+  const image = ctx.createImageData(side, side);
+  const alpha = new Float32Array(side * side);
+  const ragged = noise(5);
+  // All in fractions of the canvas.
+  const mx = origin.x / size;
+  const my = origin.y / size;
+  const tx = 0.6;
+  const ty = 0.47;
+  for (let j = 0; j < side; j++) {
+    for (let i = 0; i < side; i++) {
+      const u = (i + 0.5) / side;
+      const v = (j + 0.5) / side;
+      // The edge wavers, only ever drawing in, never out.
+      const n = 0.9 + 0.3 * (ragged(u * 7, v * 7) * 0.7 + ragged(u * 17 + 9, v * 17) * 0.3);
+      // around the mark, closing in sooner below it, where the name sits
+      const below = v > my ? 1.3 : 1;
+      const r = Math.hypot(u - mx, (v - my) * below) * n;
+      const mark = 1 - smooth(0.16, 0.25, r);
+      // a trail along the current
+      const dx = tx - mx;
+      const dy = ty - my;
+      const along = Math.max(0, Math.min(1, ((u - mx) * dx + (v - my) * dy) / (dx * dx + dy * dy)));
+      const d = Math.hypot(u - mx - along * dx, v - my - along * dy) * n;
+      const trail = 1 - smooth(0.05, 0.2, d);
+      const edge = smooth(0, 0.04, Math.min(u, v, 1 - u, 1 - v));
+      const a = Math.max(mark, trail) * edge;
+      alpha[i + j * side] = a;
+      image.data[(i + j * side) * 4 + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return {
+    canvas,
+    // How much of the ink shows at a point, in canvas pixels.
+    at(x: number, y: number) {
+      const i = Math.floor((x / size) * side);
+      const j = Math.floor((y / size) * side);
+      return i < 0 || j < 0 || i >= side || j >= side ? 0 : alpha[i + j * side];
+    },
+  };
+}
+
 function water(size: number, origin: { x: number; y: number }) {
   const next = random(17);
   const broad = noise(3);
@@ -45,6 +100,7 @@ function water(size: number, origin: { x: number; y: number }) {
   };
   const washLayer = layer(Math.round(size / 4));
   const threadLayer = layer(size);
+  const shows = cloud(size, origin);
   // Where the ink enters: the middle of the mark.
   const source = origin;
   let seep = 0;
@@ -186,40 +242,21 @@ function water(size: number, origin: { x: number; y: number }) {
         mote.x = nx;
         mote.y = ny;
         mote.age += step;
-        // Ink that reaches the faded margins is gone, so none gathers along them.
-        const margin = 28 * unit;
-        const gone = nx < margin || ny < margin || nx > size - margin || ny > size - 8 * unit;
-        if (gone || mote.age > mote.life) motes.splice(i, 1);
+        // Ink that drifts out of the cloud can't be seen, so it is let go.
+        if (shows.at(nx, ny) < 0.02 || mote.age > mote.life) motes.splice(i, 1);
       }
 
       // Each layer slowly clears, so the ink keeps moving instead of piling
-      // up, and thins away toward the far edge so it never meets one.
-      // Clearing happens in steps of a tenth: a canvas keeps only 256 levels
+      // up. Clearing happens in steps of a tenth: a canvas keeps only 256 levels
       // of ink, and much smaller steps round away, leaving faint ghosts.
       clearing += step;
       const clear = clearing >= 5;
       if (clear) clearing -= 5;
       const settle = (layer: CanvasRenderingContext2D, rate: number) => {
         const side = layer.canvas.width;
-        const k = side / size;
         layer.globalCompositeOperation = 'destination-out';
         if (clear) {
           layer.fillStyle = `rgba(0,0,0,${rate * 5})`;
-          layer.fillRect(0, 0, side, side);
-        }
-        // Toward every edge the ink thins to nothing, soonest along the bottom,
-        // which sits just under the mark.
-        const edges: [number, number, number, number][] = [
-          [0, 0, 0, 40 * unit * k],
-          [0, side, 0, side - 12 * unit * k],
-          [0, 0, 40 * unit * k, 0],
-          [side, 0, side - 40 * unit * k, 0],
-        ];
-        for (const [x0, y0, x1, y1] of edges) {
-          const fade = layer.createLinearGradient(x0, y0, x1, y1);
-          fade.addColorStop(0, `rgba(0,0,0,${Math.min(1, 0.35 * step)})`);
-          fade.addColorStop(1, 'rgba(0,0,0,0)');
-          layer.fillStyle = fade;
           layer.fillRect(0, 0, side, side);
         }
         layer.globalCompositeOperation = 'source-over';
@@ -246,6 +283,10 @@ function water(size: number, origin: { x: number; y: number }) {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(washLayer.canvas, 0, 0, size, size);
       ctx.drawImage(threadLayer.canvas, 0, 0);
+      // Only the cloud shows, so the ink thins into the paper with no edge.
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(shows.canvas, 0, 0, size, size);
+      ctx.globalCompositeOperation = 'source-over';
     },
   };
 }
