@@ -1,298 +1,199 @@
-// The portal as ink in water: a drop falls in and unfurls in slow curls, as a
-// soft grey wash with fine dark threads running through it. Nothing holds it
-// to a round: the ink drifts out past the mark and thins into the paper.
-// A fresh drop falls in now and then, each heartbeat sends out a ring of ink,
-// a pointer moving nearby stirs it, scrolling sloshes it, a tap drops a bead
-// of its own, and the current carries the ink toward whatever the portal turns to.
-import { definePortal, noise, random, type Frame } from './portal-base';
+// The portal as one solid mass of ink: flat, matte, the same black as the
+// name under it, with no wash or smoke. A few lobes turn slowly inside it so
+// its outline never quite settles. Now and then a drop falls in and the mass
+// shudders; each heartbeat swells it; the current leans it toward whatever
+// the portal turns to; a pointer nearby draws a bead out of it, a tap flicks
+// one off, and scrolling sets it wobbling like something heavy and wet.
+import { definePortal, random, type Frame } from './portal-base';
 
-// The canvas reaches into the open paper above and beside the mark, so the
-// ink has room to wander, and stops just under the mark, so it never runs
-// into the name below (16px down). All in the mark's widths.
-const SPREAD = 2.8;
+// The canvas reaches a little past the mark on every side so the ink can lean
+// and drip, and stops just under the mark, short of the name (16px down).
+// All in the mark's widths.
+const SPREAD = 1.6;
 const LEFT = -0.3;
-const TOP = 1.12 - SPREAD;
-const MOST = 2400;
+const TOP = -0.45;
 
-type Mote = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  age: number;
-  life: number;
-  // threads are fine and dark; the rest are the wash around them
-  thread: boolean;
-};
+// A round of ink in the field, in the mark's widths from its middle.
+type Lobe = { x: number; y: number; r: number };
+// Ink away from the mass: a falling drop, a flicked bead. It springs home.
+type Bead = Lobe & { vx: number; vy: number; age: number; falling: boolean };
 
-// The middle of the mark, in canvas pixels.
-const originOf = (size: number) => ({
-  x: ((0.5 - LEFT) / SPREAD) * size,
-  y: ((0.5 - TOP) / SPREAD) * size,
-});
+const clamp = (x: number, low: number, high: number) => Math.max(low, Math.min(high, x));
 
-const smooth = (from: number, to: number, x: number) => {
-  const t = Math.max(0, Math.min(1, (x - from) / (to - from)));
-  return t * t * (3 - 2 * t);
-};
-
-// Where the ink can show: solid over the mark, trailing up and to the right
-// along the current, with a ragged edge that thins to nothing well inside the
-// canvas, so the ink never meets a straight side or the top of the page.
-function cloud(size: number, origin: { x: number; y: number }) {
-  const side = Math.max(1, Math.round(size / 2));
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = side;
-  const ctx = canvas.getContext('2d')!;
-  const image = ctx.createImageData(side, side);
-  const alpha = new Float32Array(side * side);
-  const ragged = noise(5);
-  // All in fractions of the canvas.
-  const mx = origin.x / size;
-  const my = origin.y / size;
-  const tx = 0.6;
-  const ty = 0.47;
-  for (let j = 0; j < side; j++) {
-    for (let i = 0; i < side; i++) {
-      const u = (i + 0.5) / side;
-      const v = (j + 0.5) / side;
-      // The edge wavers, only ever drawing in, never out.
-      const n = 0.9 + 0.3 * (ragged(u * 7, v * 7) * 0.7 + ragged(u * 17 + 9, v * 17) * 0.3);
-      // around the mark, closing in sooner below it, where the name sits
-      const below = v > my ? 1.3 : 1;
-      const r = Math.hypot(u - mx, (v - my) * below) * n;
-      const mark = 1 - smooth(0.16, 0.25, r);
-      // a trail along the current
-      const dx = tx - mx;
-      const dy = ty - my;
-      const along = Math.max(0, Math.min(1, ((u - mx) * dx + (v - my) * dy) / (dx * dx + dy * dy)));
-      const d = Math.hypot(u - mx - along * dx, v - my - along * dy) * n;
-      const trail = 1 - smooth(0.05, 0.2, d);
-      const edge = smooth(0, 0.04, Math.min(u, v, 1 - u, 1 - v));
-      const a = Math.max(mark, trail) * edge;
-      alpha[i + j * side] = a;
-      image.data[(i + j * side) * 4 + 3] = Math.round(a * 255);
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-  return {
-    canvas,
-    // How much of the ink shows at a point, in canvas pixels.
-    at(x: number, y: number) {
-      const i = Math.floor((x / size) * side);
-      const j = Math.floor((y / size) * side);
-      return i < 0 || j < 0 || i >= side || j >= side ? 0 : alpha[i + j * side];
-    },
-  };
+// The colour the name is set in, so the mark and the wordmark are one ink.
+function inkOf(mark: HTMLElement) {
+  const [r, g, b] = (getComputedStyle(mark).color.match(/[\d.]+/g) ?? []).map(Number);
+  return Number.isFinite(b) ? [r, g, b] : [17, 17, 17];
 }
 
-function water(size: number, origin: { x: number; y: number }) {
-  const next = random(17);
-  const broad = noise(3);
-  const eddy = noise(8);
-  const motes: Mote[] = [];
-  // Two layers that each keep their ink between frames: the wash, drawn at a
-  // quarter size so scaling it up softens it into clouds, and the threads.
-  const layer = (side: number) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = side;
-    return canvas.getContext('2d')!;
-  };
-  const washLayer = layer(Math.round(size / 4));
-  const threadLayer = layer(size);
-  const shows = cloud(size, origin);
-  // Where the ink enters: the middle of the mark.
-  const source = origin;
-  let seep = 0;
-  let clearing = 0;
-  let lastBeat = -1;
-  // The first drop falls at once; later ones every seven to twelve seconds.
-  let nextDrop = 0;
+function mass(size: number, mark: HTMLElement) {
+  const next = random(23);
+  // Canvas pixels per mark width, and the middle of the mark.
+  const width = size / SPREAD;
+  const ox = ((0.5 - LEFT) / SPREAD) * size;
+  const oy = ((0.5 - TOP) / SPREAD) * size;
+  const image = new ImageData(size, size);
+  const pixels = image.data;
+  // The lobes that turn inside the mass, each on its own slow loop.
+  const turning = Array.from({ length: 6 }, (_, k) => ({
+    orbit: 0.17 + next() * 0.09,
+    r: 0.085 + next() * 0.05,
+    phase: (k / 6) * Math.PI * 2 + next(),
+    speed: (0.12 + next() * 0.1) * (k % 2 ? -1 : 1),
+    wobble: 0.6 + next() * 0.8,
+  }));
+  const beads: Bead[] = [];
+  let reach = 0;
+  let reachX = 0;
+  let reachY = 0;
+  // How far the mass hangs below where it should sit, and how fast it moves.
+  let sag = 0;
+  let sagSpeed = 0;
+  let shudder = 0;
+  // The first drop falls soon after the page opens; later ones every eight to
+  // fourteen seconds.
+  let nextDrop = 1.2;
+  let ink = inkOf(mark);
+  let wasDark: boolean | undefined;
 
-  const add = (mote: Omit<Mote, 'age'>) => {
-    if (motes.length < MOST) motes.push({ ...mote, age: 0 });
-  };
-
-  // A thin ring of ink moving outward, like a ripple or a pulse.
-  const ring = (x: number, y: number, unit: number, count: number, speed: number) => {
-    for (let k = 0; k < count; k++) {
-      const angle = (k / count) * Math.PI * 2 + next() * 0.1;
-      add({
-        x: x + Math.cos(angle) * 3 * unit,
-        y: y + Math.sin(angle) * 3 * unit,
-        vx: Math.cos(angle) * speed * unit,
-        vy: Math.sin(angle) * speed * unit,
-        life: 50 + next() * 40,
-        thread: true,
-      });
-    }
-  };
-
-  // A bead of ink landing: a dense core that plunges, and a ring that spreads.
-  const drop = (x: number, y: number, unit: number, weight: number) => {
-    for (let k = 0; k < 220 * weight; k++) {
-      const angle = next() * Math.PI * 2;
-      const push = next() * 1.6 * unit;
-      add({
-        x: x + (next() - 0.5) * 4 * unit,
-        y: y + (next() - 0.5) * 4 * unit,
-        vx: Math.cos(angle) * push,
-        vy: Math.sin(angle) * push + 1.4 * unit * next(),
-        life: 160 + next() * 340,
-        thread: next() < 0.45,
-      });
-    }
-    ring(x, y, unit, 70 * weight, 1.5);
-  };
-
-  // The curl of a noise field: flow that swirls without bunching up.
-  const curl = (
-    field: (x: number, y: number) => number,
-    x: number,
-    y: number,
-    scale: number,
-    t: number,
-  ) => {
-    const e = 0.6;
-    // Two octaves at odd angles, so the lattice the noise is built on never
-    // shows as straight runs of ink.
-    const p = (u: number, v: number) => {
-      const a = (u * 0.8 - v * 0.6) * scale + t * 0.05;
-      const b = (u * 0.6 + v * 0.8) * scale - t * 0.035;
-      const c = (u * 0.28 + v * 0.96) * scale * 2.1 + 31.7;
-      const d = (v * 0.28 - u * 0.96) * scale * 2.1 - t * 0.04;
-      return (field(a, b) + field(c, d) * 0.45) * 60;
-    };
-    return [(p(x, y + e) - p(x, y - e)) / (2 * e), -(p(x + e, y) - p(x - e, y)) / (2 * e)];
-  };
+  const bead = (x: number, y: number, r: number, falling: boolean) =>
+    beads.push({ x, y, r, vx: 0, vy: 0, age: 0, falling });
 
   return {
     frame(f: Frame) {
-      const { ctx, size, unit, time, delta, beat, touch, dark } = f;
+      const { ctx, time, delta, beat, touch, dark } = f;
       const step = Math.min(delta * 60, 3);
-
-      // New ink: a drop now and then, a steady seep, a ring on each beat, and a
-      // bead wherever the portal is tapped.
-      if (time >= nextDrop) {
-        const first = nextDrop === 0;
-        drop(source.x + (next() - 0.5) * 10 * unit, source.y - 14 * unit, unit, first ? 1.2 : 0.7);
-        nextDrop = time + 7 + next() * 5;
+      if (dark !== wasDark) {
+        ink = inkOf(mark);
+        wasDark = dark;
       }
-      seep += 1.6 * step;
-      for (; seep >= 1; seep--) {
-        add({
-          x: source.x + (next() - 0.5) * 8 * unit,
-          y: source.y + (next() - 0.5) * 6 * unit,
-          vx: (next() - 0.5) * 0.4 * unit,
-          vy: 0.3 * unit,
-          life: 160 + next() * 300,
-          thread: next() < 0.35,
+
+      if (time >= nextDrop) {
+        bead((next() - 0.5) * 0.12, -0.88, 0.055, true);
+        nextDrop = time + 8 + next() * 6;
+      }
+      for (const tap of f.taps) {
+        const x = (tap.x - ox) / width;
+        const y = (tap.y - oy) / width;
+        const d = Math.hypot(x, y) || 1;
+        // A tap flicks a bead off the mass, away from where it landed.
+        bead((x / d) * 0.2, (y / d) * 0.2, 0.07, false);
+        const flicked = beads[beads.length - 1];
+        flicked.vx = (x / d) * 0.03;
+        flicked.vy = (y / d) * 0.03;
+        shudder = Math.min(1, shudder + 0.5);
+      }
+
+      // Scrolling shoves the mass; a heavy spring pulls it back.
+      sagSpeed += clamp(f.scroll / width, -0.3, 0.3) * 0.06;
+      sagSpeed += -sag * 0.012 * step - sagSpeed * 0.06 * step;
+      sag = clamp(sag + sagSpeed * step, -0.12, 0.12);
+      shudder *= Math.pow(0.97, step);
+
+      // Leaning toward whatever the portal turns to.
+      const leanX = f.x * touch * 0.1;
+      const leanY = -f.y * touch * 0.1;
+      const swell = 1 + beat * 0.045;
+      const lobes: Lobe[] = [{ x: leanX * 0.4, y: leanY * 0.4 + sag * 0.3, r: 0.17 * swell }];
+      for (const [k, lobe] of turning.entries()) {
+        const angle = lobe.phase + time * lobe.speed;
+        const shake = 1 + shudder * 0.6 * Math.sin(time * 9 + k * 2.1);
+        const orbit = lobe.orbit * (1 + 0.3 * Math.sin(time * 0.3 * lobe.wobble + k)) * shake;
+        lobes.push({
+          x: Math.cos(angle) * orbit + leanX * (1 + k * 0.15),
+          y: Math.sin(angle) * orbit + leanY * (1 + k * 0.15) + sag * (0.6 + k * 0.15),
+          r: lobe.r * swell,
         });
       }
-      if (beat > 0.8 && time - lastBeat > 0.3) {
-        ring(source.x, source.y, unit, 46, 0.9);
-        lastBeat = time;
-      }
-      for (const tap of f.taps) drop(tap.x, tap.y, unit, 0.9);
 
-      const drag = Math.pow(0.955, step);
-      const leanX = f.x * touch * 0.03 * unit;
-      const leanY = -f.y * touch * 0.03 * unit;
-      const scroll = Math.max(-40, Math.min(40, f.scroll));
-      const hand = f.pointer;
-      const reach = 30 * unit;
-      const s = 1 / unit;
-      const wash = new Path2D();
-      const threads = new Path2D();
-      for (let i = motes.length - 1; i >= 0; i--) {
-        const mote = motes[i];
-        const [ax, ay] = curl(broad, mote.x * s, mote.y * s, 0.016, time);
-        const [bx, by] = curl(eddy, mote.x * s, mote.y * s, 0.05, time);
-        // a slow current toward the open paper on the right
-        mote.vx =
-          mote.vx * drag +
-          (ax * 1.4 + bx * 0.6) * 0.05 * unit * step +
-          0.004 * unit * step +
-          leanX * step;
-        mote.vy =
-          mote.vy * drag +
-          (ay * 1.4 + by * 0.6) * 0.05 * unit * step +
-          // the ink is a little lighter than the water, so it rises into the open paper
-          -0.005 * unit * step +
-          leanY * 0.4 * step;
-        // Scrolling sloshes the water the other way, as if the bowl had moved.
-        mote.vy -= scroll * 0.012;
-        // A moving hand drags the water along and sets it turning around itself.
-        if (hand) {
-          const dx = mote.x - hand.x;
-          const dy = mote.y - hand.y;
-          const d = Math.hypot(dx, dy);
-          if (d < reach) {
-            const pull = (1 - d / reach) ** 2;
-            const speed = Math.min(Math.hypot(hand.vx, hand.vy), 30 * unit);
-            mote.vx += (hand.vx * 0.05 + (-dy / (d + 1)) * speed * 0.04) * pull;
-            mote.vy += (hand.vy * 0.05 + (dx / (d + 1)) * speed * 0.04) * pull;
+      // A pointer nearby draws a bead of ink out toward itself.
+      let wantReach = 0;
+      if (f.pointer) {
+        const x = (f.pointer.x - ox) / width;
+        const y = (f.pointer.y - oy) / width;
+        const d = Math.hypot(x, y);
+        if (d < 0.9 && d > 0.05) {
+          wantReach = 1 - d / 0.9;
+          const out = Math.min(d, 0.34);
+          reachX = (x / d) * out;
+          reachY = (y / d) * out;
+        }
+      }
+      reach += (wantReach - reach) * (1 - Math.pow(0.9, step));
+      if (reach > 0.01) lobes.push({ x: reachX * reach, y: reachY * reach, r: 0.08 * reach });
+
+      // Beads fall or spring home, and melt into the mass once they arrive.
+      for (let i = beads.length - 1; i >= 0; i--) {
+        const b = beads[i];
+        b.age += step;
+        if (b.falling) {
+          b.vy += 0.0009 * step;
+        } else {
+          b.vx += -b.x * 0.004 * step;
+          b.vy += -b.y * 0.004 * step;
+          b.vx *= Math.pow(0.93, step);
+          b.vy *= Math.pow(0.93, step);
+        }
+        b.x += b.vx * step;
+        b.y += b.vy * step;
+        const home = Math.hypot(b.x, b.y);
+        if (home < 0.16) {
+          if (b.falling) {
+            shudder = Math.min(1, shudder + 0.8);
+            sagSpeed += b.vy * 0.4;
           }
+          beads.splice(i, 1);
+          continue;
         }
-        const nx = mote.x + mote.vx * step;
-        const ny = mote.y + mote.vy * step;
-        const path = mote.thread ? threads : wash;
-        path.moveTo(mote.x, mote.y);
-        path.lineTo(nx, ny);
-        mote.x = nx;
-        mote.y = ny;
-        mote.age += step;
-        // Ink that drifts out of the cloud can't be seen, so it is let go.
-        if (shows.at(nx, ny) < 0.02 || mote.age > mote.life) motes.splice(i, 1);
+        if (b.age > 600) beads.splice(i, 1);
+        else lobes.push(b);
       }
 
-      // Each layer slowly clears, so the ink keeps moving instead of piling
-      // up. Clearing happens in steps of a tenth: a canvas keeps only 256 levels
-      // of ink, and much smaller steps round away, leaving faint ghosts.
-      clearing += step;
-      const clear = clearing >= 5;
-      if (clear) clearing -= 5;
-      const settle = (layer: CanvasRenderingContext2D, rate: number) => {
-        const side = layer.canvas.width;
-        layer.globalCompositeOperation = 'destination-out';
-        if (clear) {
-          layer.fillStyle = `rgba(0,0,0,${rate * 5})`;
-          layer.fillRect(0, 0, side, side);
+      // The ink is wherever the lobes' pull adds up to one, with an edge a
+      // pixel and a bit wide, so it reads as cut cleanly from the paper.
+      let left = size;
+      let top = size;
+      let right = 0;
+      let bottom = 0;
+      const fields = lobes.map((lobe) => {
+        const x = ox + lobe.x * width;
+        const y = oy + lobe.y * width;
+        const r = lobe.r * width;
+        // A lobe's pull falls below a tenth of the threshold beyond three radii.
+        left = Math.min(left, x - r * 3);
+        top = Math.min(top, y - r * 3);
+        right = Math.max(right, x + r * 3);
+        bottom = Math.max(bottom, y + r * 3);
+        return { x, y, rr: r * r };
+      });
+      const x0 = clamp(Math.floor(left), 0, size);
+      const y0 = clamp(Math.floor(top), 0, size);
+      const x1 = clamp(Math.ceil(right), 0, size);
+      const y1 = clamp(Math.ceil(bottom), 0, size);
+      // How far the field climbs per pixel at the edge of a middling lobe.
+      const sharp = width * 0.12;
+      const [red, green, blue] = ink;
+      pixels.fill(0);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          let field = 0;
+          for (const lobe of fields) {
+            const dx = x + 0.5 - lobe.x;
+            const dy = y + 0.5 - lobe.y;
+            field += lobe.rr / (dx * dx + dy * dy + 0.01);
+          }
+          const alpha = clamp(0.5 + (field - 1) * sharp, 0, 1);
+          if (alpha === 0) continue;
+          const at = (x + y * size) * 4;
+          pixels[at] = red;
+          pixels[at + 1] = green;
+          pixels[at + 2] = blue;
+          pixels[at + 3] = alpha * 255;
         }
-        layer.globalCompositeOperation = 'source-over';
-      };
-      settle(washLayer, 0.02);
-      settle(threadLayer, 0.03);
-
-      // the wash: broad and pale, at a quarter size
-      washLayer.save();
-      washLayer.scale(0.25, 0.25);
-      washLayer.lineCap = 'round';
-      washLayer.strokeStyle = dark ? 'rgba(220,218,212,0.06)' : 'rgba(20,20,20,0.055)';
-      washLayer.lineWidth = 5 * unit;
-      washLayer.stroke(wash);
-      washLayer.restore();
-      // the threads: fine and dark
-      threadLayer.lineCap = 'round';
-      threadLayer.strokeStyle = dark ? 'rgba(226,224,218,0.13)' : 'rgba(20,20,20,0.11)';
-      threadLayer.lineWidth = 1 * unit;
-      threadLayer.stroke(threads);
-
-      ctx.clearRect(0, 0, size, size);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(washLayer.canvas, 0, 0, size, size);
-      ctx.drawImage(threadLayer.canvas, 0, 0);
-      // Only the cloud shows, so the ink thins into the paper with no edge.
-      ctx.globalCompositeOperation = 'destination-in';
-      ctx.drawImage(shows.canvas, 0, 0, size, size);
-      ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.putImageData(image, 0, 0);
     },
   };
 }
 
-definePortal((size) => water(size, originOf(size)), {
-  spread: SPREAD,
-  left: LEFT,
-  top: TOP,
-});
+definePortal(mass, { spread: SPREAD, left: LEFT, top: TOP });
