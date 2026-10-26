@@ -2,14 +2,13 @@
 // the heartbeat, turning toward a point, and the hand's effect on it (a
 // pointer moving nearby, a tap, the page scrolling). Each portal supplies a
 // painter that draws one frame; this registers it as <ink-mark> with the same
-// lean() and rest() the homepage's threads and ink drops already call.
+// lean() and rest() the homepage's threads already call.
 export type Frame = {
   ctx: CanvasRenderingContext2D;
-  size: number;
-  // Canvas pixels per CSS pixel of the mark, so painters can size things alike
-  // on any screen.
-  unit: number;
-  // The middle of the mark, in canvas pixels.
+  width: number;
+  height: number;
+  // The middle of the mark, in canvas pixels. On a page-wide canvas it moves as
+  // the page scrolls.
   origin: { x: number; y: number };
   time: number;
   delta: number;
@@ -18,7 +17,8 @@ export type Frame = {
   x: number;
   y: number;
   touch: number;
-  // A fine pointer near the portal, in canvas pixels, and how fast it moved.
+  // A fine pointer near the portal (anywhere in the window, on a page-wide
+  // canvas), in canvas pixels, and how fast it moved.
   pointer: { x: number; y: number; vx: number; vy: number } | null;
   // How far the page scrolled since the last frame, in canvas pixels.
   scroll: number;
@@ -70,13 +70,15 @@ export function noise(seed: number) {
 // corner (centred on the mark unless given).
 // spread: how many times the mark's width the canvas covers, so a portal can
 // draw beyond its own box (the canvas sits centred on the mark, under the text).
+// page: the canvas covers the whole window instead, so the portal can wander.
 export function definePortal(
-  paint: (size: number, mark: HTMLElement) => Painter,
+  paint: (canvas: HTMLCanvasElement, mark: HTMLElement) => Painter,
   {
     spread = 1,
     left = -(spread - 1) / 2,
     top = -(spread - 1) / 2,
-  }: { spread?: number; left?: number; top?: number } = {},
+    page = false,
+  }: { spread?: number; left?: number; top?: number; page?: boolean } = {},
 ) {
   class Portal extends HTMLElement {
     private cleanup?: () => void;
@@ -96,7 +98,16 @@ export function definePortal(
       const canvas = this.querySelector('canvas');
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx) return;
-      if (spread !== 1) {
+      if (page) {
+        Object.assign(canvas.style, {
+          position: 'fixed',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          background: 'none',
+          zIndex: '-1',
+        });
+      } else if (spread !== 1) {
         Object.assign(canvas.style, {
           inset: 'auto',
           left: `${left * 100}%`,
@@ -127,10 +138,14 @@ export function definePortal(
       let lastScroll = scrollY;
       let taps: Frame['taps'] = [];
 
-      const centre = () => ({
-        x: ((0.5 - left) / spread) * canvas.width,
-        y: ((0.5 - top) / spread) * canvas.height,
-      });
+      const centre = () => {
+        const mark = this.getBoundingClientRect();
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: ((mark.left + mark.width / 2 - rect.left) / rect.width) * canvas.width,
+          y: ((mark.top + mark.height / 2 - rect.top) / rect.height) * canvas.height,
+        };
+      };
       // A point on the page, in canvas pixels.
       const toCanvas = (clientX: number, clientY: number) => {
         const rect = canvas.getBoundingClientRect();
@@ -148,8 +163,8 @@ export function definePortal(
         lastScroll = scrollY;
         painter.frame({
           ctx,
-          size: canvas.width,
-          unit: canvas.width / (this.clientWidth * spread),
+          width: canvas.width,
+          height: canvas.height,
           origin: centre(),
           time: elapsed,
           delta,
@@ -187,8 +202,8 @@ export function definePortal(
       };
       const stillFrame = (): Frame => ({
         ctx,
-        size: canvas.width,
-        unit: canvas.width / (this.clientWidth * spread),
+        width: canvas.width,
+        height: canvas.height,
         origin: centre(),
         time: elapsed,
         delta: 1 / 60,
@@ -201,10 +216,15 @@ export function definePortal(
         taps: [],
         dark: darkPaper.matches,
       });
-      const resize = new ResizeObserver(() => {
+      const fit = () => {
         const ratio = Math.min(devicePixelRatio || 1, 2);
-        canvas.width = canvas.height = Math.max(1, Math.round(this.clientWidth * spread * ratio));
-        painter = paint(canvas.width, this);
+        if (page) {
+          canvas.width = Math.max(1, Math.round(document.documentElement.clientWidth * ratio));
+          canvas.height = Math.max(1, Math.round(innerHeight * ratio));
+        } else {
+          canvas.width = canvas.height = Math.max(1, Math.round(this.clientWidth * spread * ratio));
+        }
+        painter = paint(canvas, this);
         // Without motion the portal settles once, as a still drawing.
         if (reduced) {
           for (let i = 0; i < 360; i++) {
@@ -214,13 +234,17 @@ export function definePortal(
           this.setAttribute('data-rendered', '');
         }
         sync();
-      });
+      };
+      const resize = new ResizeObserver(fit);
+      // A page-wide portal may have wandered off from the mark, so it keeps
+      // drawing while the mark is scrolled away.
       const observer = new IntersectionObserver(([entry]) => {
-        visible = entry.isIntersecting;
+        visible = page || entry.isIntersecting;
         sync();
       });
       resize.observe(this);
       observer.observe(this);
+      if (page) addEventListener('resize', fit, options);
       document.addEventListener('visibilitychange', sync, options);
 
       // Turning toward the pointer over the mark itself.
@@ -235,7 +259,7 @@ export function definePortal(
         },
         options,
       );
-      // A pointer anywhere over the canvas's reach stirs the water.
+      // A pointer anywhere over the canvas's reach stirs the goo.
       addEventListener(
         'pointermove',
         (event: PointerEvent) => {
@@ -253,6 +277,14 @@ export function definePortal(
                 vy: pointer ? point.y - pointer.y : 0,
               }
             : null;
+        },
+        options,
+      );
+      // Leaving the window takes the pointer away.
+      addEventListener(
+        'pointerout',
+        (event: PointerEvent) => {
+          if (!event.relatedTarget) pointer = null;
         },
         options,
       );
