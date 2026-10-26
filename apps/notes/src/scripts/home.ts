@@ -1,7 +1,6 @@
 // The homepage's live touches: the portal beats at my resting heart rate,
 // hovering a link turns its ink toward it, and each project shows a small
-// preview of itself. Ink drops come from ink-drops.ts.
-import './ink-drops';
+// preview of itself.
 type InkMark = HTMLElement & { lean(x: number, y: number): void; rest(): void };
 type Day = {
   date: string;
