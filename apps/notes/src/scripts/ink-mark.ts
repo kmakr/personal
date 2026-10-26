@@ -3,8 +3,8 @@
 // highlight. Lobes churn slowly inside it, and tendrils lash out on their own
 // now and then, curl, and pull back. A pointer nearby draws them toward it,
 // as does whatever link the portal turns to. Each heartbeat swells it and
-// jolts a few rows sideways; a drop falls in now and then; a tap sends a burst
-// of tendrils at it; scrolling shoves it and tears rows out of line.
+// jolts a few rows sideways; a tap sends a burst of tendrils at it; scrolling
+// shoves it and tears rows out of line.
 //
 // It also wanders, like something that has got loose: it crawls after the
 // pointer anywhere on the page, throwing legs ahead that grip the paper and
@@ -33,7 +33,6 @@ const VEIN_STEP = 0.11;
 
 // A round of goo, in the mark's widths from its middle.
 type Lobe = { x: number; y: number; r: number };
-type Bead = Lobe & { vy: number };
 type Tendril = { angle: number; born: number; life: number; length: number; curl: number };
 // A foot, where it grips now and, while it is in the air, where it let go and
 // where it will land; all in the mark's widths from the mark's middle.
@@ -109,11 +108,9 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
     speed: (0.25 + next() * 0.2) * (k % 2 ? -1 : 1),
   }));
   const tendrils: Tendril[] = [];
-  const beads: Bead[] = [];
   // How far each row is torn sideways, in cells, while the signal glitches.
   const shift = new Int8Array(ny);
   let nextTendril = 0.4;
-  let nextDrop = 2;
   let glitchUntil = -1;
   let lastBeat = -1;
   let sag = 0;
@@ -280,10 +277,6 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
         for (let k = 0; k < 3; k++) spread(time, head.x, head.y, angle + (k - 1) * 2.1, 7);
         glitch(time, 6, 3);
       }
-      if (time >= nextDrop) {
-        beads.push({ x: (next() - 0.5) * 0.12, y: -0.88, r: 0.06, vy: 0 });
-        nextDrop = time + 8 + next() * 6;
-      }
       if (beat > 0.8 && time - lastBeat > 0.3) {
         lastBeat = time;
         glitch(time, 2, 1);
@@ -325,16 +318,6 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
           y: Math.sin(angle) * orbit + leanY + sag * (0.6 + k * 0.15),
           r: lobe.r * swell,
         });
-      }
-      for (let i = beads.length - 1; i >= 0; i--) {
-        const b = beads[i];
-        b.vy += 0.0009 * step;
-        b.y += b.vy * step;
-        if (b.y > -0.16) {
-          sagSpeed += b.vy * 0.4;
-          glitch(time, 3, 2);
-          beads.splice(i, 1);
-        } else lobes.push(b);
       }
 
       // Each tendril as a chain of tapering capsules along a curling line,
