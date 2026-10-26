@@ -99,13 +99,15 @@ export function definePortal(
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx) return;
       if (page) {
+        // Over the page, so whatever it crawls across is hidden under it; it
+        // takes no clicks, so links beneath still work.
         Object.assign(canvas.style, {
           position: 'fixed',
           inset: '0',
           width: '100%',
           height: '100%',
           background: 'none',
-          zIndex: '-1',
+          zIndex: '10',
         });
       } else if (spread !== 1) {
         Object.assign(canvas.style, {
