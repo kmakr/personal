@@ -10,7 +10,9 @@
 // pointer anywhere on the page, throwing legs ahead that grip the paper and
 // dragging itself along them, and dark veins creep out across the paper
 // behind it and fade. When the pointer leaves the window it crawls back home,
-// where its legs twitch and veins still spread from it now and then.
+// where its legs twitch and veins still spread from it now and then. On a
+// phone, with no pointer to follow, it crawls to wherever a finger taps,
+// lingers there a while, and crawls home.
 import { definePortal, random, type Frame } from './portal-base';
 
 // One cell of the grid, in CSS pixels.
@@ -21,6 +23,8 @@ const CELL = 4;
 const CRAWL = 0.6;
 const SHORT = 0.35;
 const SPACING = 0.12;
+// How long it lingers where a finger tapped before it crawls home, in seconds.
+const LINGER = 3;
 // The trailing body, head to tail, as radii of its rounds.
 const BODY = [0.17, 0.16, 0.14, 0.11, 0.09];
 // The legs it grips the paper with: how many, and how far a foot may trail
@@ -101,6 +105,10 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
   let heading = 0;
   let moving = 0;
   let lastVein = { x: 0, y: 0 };
+  // Where a finger last tapped, in the mark's widths from its middle, and when
+  // the head got there.
+  let lure: { x: number; y: number } | null = null;
+  let lured = -1;
   const turning = Array.from({ length: 6 }, (_, k) => ({
     orbit: 0.15 + next() * 0.08,
     r: 0.08 + next() * 0.045,
@@ -195,6 +203,13 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
         x: (f.pointer.x / cell - ox) / span,
         y: (f.pointer.y / cell - oy) / span,
       };
+      // A tapped finger lures it right onto the spot, until it has lingered there.
+      for (const tap of f.lures) {
+        lure = { x: (tap.x / cell - ox) / span, y: (tap.y / cell - oy) / span };
+        lured = -1;
+      }
+      if (lure && lured < 0 && Math.hypot(lure.x - head.x, lure.y - head.y) < 0.02) lured = time;
+      if (lured >= 0 && time - lured > LINGER) lure = null;
       let goalX = 0;
       let goalY = 0;
       if (pointer) {
@@ -202,6 +217,9 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
         const stop = Math.max(0, distance - SHORT) / (distance || 1);
         goalX = head.x + (pointer.x - head.x) * stop;
         goalY = head.y + (pointer.y - head.y) * stop;
+      } else if (lure) {
+        goalX = lure.x;
+        goalY = lure.y;
       }
       const inch = 0.25 + 0.75 * Math.max(0, Math.sin(time * 3.2)) ** 2;
       const wasX = head.x;
@@ -256,11 +274,13 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
         spread(time, head.x, head.y, next() * Math.PI * 2, 6);
       }
 
-      // Where the goo wants to reach: the pointer, else a link it turns to.
+      // Where the goo wants to reach: the pointer or a tapped spot, else a
+      // link it turns to.
       let target: { angle: number; distance: number } | null = null;
-      if (pointer) {
-        const x = pointer.x - head.x;
-        const y = pointer.y - head.y;
+      const lead = pointer ?? lure;
+      if (lead) {
+        const x = lead.x - head.x;
+        const y = lead.y - head.y;
         const distance = Math.hypot(x, y);
         if (distance < 1.3) target = { angle: Math.atan2(y, x), distance };
       } else if (touch > 0.3) {

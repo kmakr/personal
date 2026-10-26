@@ -24,6 +24,9 @@ export type Frame = {
   scroll: number;
   // Taps on the portal since the last frame, in canvas pixels.
   taps: { x: number; y: number }[];
+  // Taps anywhere on the page from a finger since the last frame, on a
+  // page-wide canvas, in canvas pixels.
+  lures: { x: number; y: number }[];
   dark: boolean;
 };
 export type Painter = { frame(frame: Frame): void };
@@ -103,12 +106,16 @@ export function definePortal(
         // takes no clicks, so links beneath still work.
         Object.assign(canvas.style, {
           position: 'fixed',
-          inset: '0',
+          top: '0',
+          left: '0',
           width: '100%',
-          height: '100%',
+          // As tall as the window with a phone's toolbars tucked away, so
+          // their sliding in and out as the page scrolls doesn't resize it.
+          height: '100vh',
           background: 'none',
           zIndex: '10',
         });
+        canvas.style.height = '100lvh';
       } else if (spread !== 1) {
         Object.assign(canvas.style, {
           inset: 'auto',
@@ -139,6 +146,7 @@ export function definePortal(
       let pointer: Frame['pointer'] = null;
       let lastScroll = scrollY;
       let taps: Frame['taps'] = [];
+      let lures: Frame['lures'] = [];
 
       const centre = () => {
         const mark = this.getBoundingClientRect();
@@ -177,9 +185,11 @@ export function definePortal(
           pointer,
           scroll: Number.isFinite(scroll) ? scroll : 0,
           taps,
+          lures,
           dark: darkPaper.matches,
         });
         taps = [];
+        lures = [];
         // The pointer's speed is spent once it has been felt.
         if (pointer) pointer = { ...pointer, vx: pointer.vx * 0.6, vy: pointer.vy * 0.6 };
         if (!this.hasAttribute('data-rendered')) this.setAttribute('data-rendered', '');
@@ -216,16 +226,23 @@ export function definePortal(
         pointer: null,
         scroll: 0,
         taps: [],
+        lures: [],
         dark: darkPaper.matches,
       });
       const fit = () => {
         const ratio = Math.min(devicePixelRatio || 1, 2);
-        if (page) {
-          canvas.width = Math.max(1, Math.round(document.documentElement.clientWidth * ratio));
-          canvas.height = Math.max(1, Math.round(innerHeight * ratio));
-        } else {
-          canvas.width = canvas.height = Math.max(1, Math.round(this.clientWidth * spread * ratio));
-        }
+        const width = Math.max(
+          1,
+          Math.round(
+            (page ? document.documentElement.clientWidth : this.clientWidth * spread) * ratio,
+          ),
+        );
+        const height = page ? Math.max(1, Math.round(canvas.clientHeight * ratio)) : width;
+        // A new painter starts the goo over at home, so only a real change of
+        // size makes one.
+        if (painter && width === canvas.width && height === canvas.height) return;
+        canvas.width = width;
+        canvas.height = height;
         painter = paint(canvas, this);
         // Without motion the portal settles once, as a still drawing.
         if (reduced) {
@@ -290,6 +307,32 @@ export function definePortal(
         },
         options,
       );
+      // Without a pointer to follow, a finger's tap anywhere on the page calls
+      // the portal over instead. A finger that scrolls is cancelled, so it
+      // calls nothing.
+      if (page) {
+        let press: { id: number; x: number; y: number } | null = null;
+        addEventListener(
+          'pointerdown',
+          (event: PointerEvent) => {
+            if (event.pointerType === 'touch' && event.isPrimary) {
+              press = { id: event.pointerId, x: event.clientX, y: event.clientY };
+            }
+          },
+          options,
+        );
+        addEventListener('pointercancel', () => (press = null), options);
+        addEventListener(
+          'pointerup',
+          (event: PointerEvent) => {
+            if (!press || press.id !== event.pointerId) return;
+            const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
+            if (moved < 12) lures.push(toCanvas(event.clientX, event.clientY));
+            press = null;
+          },
+          options,
+        );
+      }
       this.addEventListener(
         'click',
         (event: MouseEvent) => taps.push(toCanvas(event.clientX, event.clientY)),
