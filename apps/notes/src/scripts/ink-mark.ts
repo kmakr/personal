@@ -9,7 +9,8 @@
 // It also wanders, like something that has got loose: it crawls after the
 // pointer anywhere on the page, throwing legs ahead that grip the paper and
 // dragging itself along them, and dark veins creep out across the paper
-// behind it and fade. When the pointer leaves the window it crawls back home,
+// behind it and fade; a faint wet film stays on the paper where its body
+// and feet have been, and dries away. When the pointer leaves the window it crawls back home,
 // where its legs twitch and veins still spread from it now and then. On a
 // phone, with no pointer to follow, it crawls to wherever a finger taps,
 // lingers there a while, and crawls home.
@@ -34,6 +35,12 @@ const REACH = 0.6;
 // The veins it leaves: how many at most, and each step of one, in the mark's widths.
 const VEINS = 40;
 const VEIN_STEP = 0.11;
+// The film it leaves: how long it takes to dry, in seconds, how dark it is
+// when fresh, out of 255, and how far the body moves between spots of it, in
+// the mark's widths.
+const FILM_LIFE = 6;
+const FILM_ALPHA = 80;
+const FILM_STEP = 0.04;
 
 // A round of goo, in the mark's widths from its middle.
 type Lobe = { x: number; y: number; r: number };
@@ -52,6 +59,8 @@ type Leg = {
 // A vein: a wandering line on the paper, in the mark's widths from the
 // mark's middle.
 type Vein = { points: number[][]; born: number; life: number };
+// A round of wet film on the paper, in the mark's widths from the mark's middle.
+type Film = { x: number; y: number; r: number; born: number };
 
 const clamp = (x: number, low: number, high: number) => Math.max(low, Math.min(high, x));
 
@@ -102,6 +111,8 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
     return { x, y, fromX: x, fromY: y, toX: x, toY: y, lift: 1 };
   });
   const veins: Vein[] = [];
+  const film: Film[] = [];
+  let lastFilm = { x: 0, y: 0 };
   let heading = 0;
   let moving = 0;
   let lastVein = { x: 0, y: 0 };
@@ -260,8 +271,17 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
           const e = 1 - (1 - leg.lift) ** 3;
           leg.x = leg.fromX + (leg.toX - leg.fromX) * e;
           leg.y = leg.fromY + (leg.toY - leg.fromY) * e;
+          // A foot that lands wets the paper under it.
+          if (leg.lift >= 1) film.push({ x: leg.x, y: leg.y, r: 0.06, born: time });
         }
       }
+
+      // The body wets the paper as it goes.
+      if (Math.hypot(head.x - lastFilm.x, head.y - lastFilm.y) > FILM_STEP) {
+        lastFilm = { x: head.x, y: head.y };
+        film.push({ x: head.x, y: head.y, r: 0.28, born: time });
+      }
+      if (film.length > 160) film.splice(0, film.length - 160);
 
       // Veins creep out behind it as it goes, and from it now and then at rest.
       const tail = body[body.length - 1];
@@ -508,8 +528,10 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
 
       if (time > glitchUntil) shift.fill(0);
 
-      // Shade it in three tones: the ink, a mid tone, and a hard glint where
-      // the surface faces the light, which swings round toward the pointer.
+      // Shade it in three tones: the ink, a mid tone, and a hard glint. The
+      // light swings round toward the pointer; it catches a thin rim just
+      // inside the edge on the side facing it, as on something wet, and the
+      // odd point where the surface faces it square on.
       const wantX = target ? clamp(Math.cos(target.angle), -0.9, 0.9) : -0.55;
       const wantY = target ? clamp(Math.sin(target.angle), -0.9, 0.9) : -0.65;
       lightX += (wantX - lightX) * Math.min(1, 0.06 * step);
@@ -521,6 +543,7 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
       const wy = lightY / ll;
       const wz = lz / ll + 1;
       const hl = Math.hypot(wx, wy, wz);
+      const lightReach = Math.hypot(lightX, lightY) || 1;
       const height = (v: number) => (v > 1 ? 1 - Math.exp(-(v - 1) * 1.4) : 0);
       const slope = span * 0.28;
       const toward = (amount: number) => ink.map((c, k) => c + (paper[k] - c) * amount);
@@ -535,13 +558,54 @@ function symbiote(canvas: HTMLCanvasElement, mark: HTMLElement) {
           const sy = -(height(field[at + nx]) - height(field[at - nx])) * slope;
           const sl = Math.hypot(sx, sy, 1);
           const facing = Math.max(0, (sx * wx + sy * wy + wz) / (sl * hl));
-          const gloss = facing ** 70 * 0.95 + facing ** 14 * 0.1;
-          const tone = gloss > 0.45 ? glint : gloss > 0.12 ? mid : ink;
+          // The rim: a cell two in from the paper, but not one, so the goo
+          // keeps a dark outline.
+          const edge =
+            field[at + 1] <= 1 || field[at - 1] <= 1 || field[at + nx] <= 1 || field[at - nx] <= 1;
+          const rim =
+            !edge &&
+            (field[at + 2] <= 1 ||
+              field[at - 2] <= 1 ||
+              field[at + 2 * nx] <= 1 ||
+              field[at - 2 * nx] <= 1);
+          // How squarely the rim's outward side faces the light.
+          const face = (sx * lightX + sy * lightY) / ((Math.hypot(sx, sy) || 1) * lightReach);
+          let tone = ink;
+          if (rim && face > 0.4) tone = glint;
+          else if (rim && face > 0.05) tone = mid;
+          else if (facing ** 70 > 0.5) tone = glint;
           const p = (x + y * nx) * 4;
           pixels[p] = tone[0];
           pixels[p + 1] = tone[1];
           pixels[p + 2] = tone[2];
           pixels[p + 3] = 255;
+        }
+      }
+      // The film shows only on bare paper, faint in the middle of each round
+      // and fading at its rim, and dries away.
+      for (let i = film.length - 1; i >= 0; i--) {
+        const spot = film[i];
+        const age = (time - spot.born) / FILM_LIFE;
+        if (age > 1) {
+          film.splice(i, 1);
+          continue;
+        }
+        const cx = ox + spot.x * span;
+        const cy = oy + spot.y * span;
+        const radius = spot.r * span;
+        const alpha = FILM_ALPHA * (1 - age) ** 1.5;
+        for (let y = Math.max(0, Math.floor(cy - radius)); y < Math.min(ny, cy + radius); y++) {
+          for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(nx, cx + radius); x++) {
+            const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / radius;
+            if (d >= 1) continue;
+            const a = alpha * (d < 0.8 ? 1 : (1 - d) * 5);
+            const p = (x + y * nx) * 4;
+            if (pixels[p + 3] === 255 || a <= pixels[p + 3]) continue;
+            pixels[p] = ink[0];
+            pixels[p + 1] = ink[1];
+            pixels[p + 2] = ink[2];
+            pixels[p + 3] = a;
+          }
         }
       }
       gridCtx.putImageData(image, 0, 0);

@@ -284,6 +284,9 @@ var LEGS = 6;
 var REACH = 0.6;
 var VEINS = 40;
 var VEIN_STEP = 0.11;
+var FILM_LIFE = 6;
+var FILM_ALPHA = 80;
+var FILM_STEP = 0.04;
 var clamp = (x, low, high) => Math.max(low, Math.min(high, x));
 var rgb = (color, fallback) => {
   const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map(Number);
@@ -325,6 +328,8 @@ function symbiote(canvas, mark) {
     return { x, y, fromX: x, fromY: y, toX: x, toY: y, lift: 1 };
   });
   const veins = [];
+  const film = [];
+  let lastFilm = { x: 0, y: 0 };
   let heading = 0;
   let moving = 0;
   let lastVein = { x: 0, y: 0 };
@@ -466,8 +471,14 @@ function symbiote(canvas, mark) {
           const e = 1 - (1 - leg.lift) ** 3;
           leg.x = leg.fromX + (leg.toX - leg.fromX) * e;
           leg.y = leg.fromY + (leg.toY - leg.fromY) * e;
+          if (leg.lift >= 1) film.push({ x: leg.x, y: leg.y, r: 0.06, born: time });
         }
       }
+      if (Math.hypot(head.x - lastFilm.x, head.y - lastFilm.y) > FILM_STEP) {
+        lastFilm = { x: head.x, y: head.y };
+        film.push({ x: head.x, y: head.y, r: 0.28, born: time });
+      }
+      if (film.length > 160) film.splice(0, film.length - 160);
       const tail = body[body.length - 1];
       if (Math.hypot(head.x - lastVein.x, head.y - lastVein.y) > 0.18) {
         lastVein = { x: head.x, y: head.y };
@@ -692,6 +703,7 @@ function symbiote(canvas, mark) {
       const wy = lightY / ll;
       const wz = lz / ll + 1;
       const hl = Math.hypot(wx, wy, wz);
+      const lightReach = Math.hypot(lightX, lightY) || 1;
       const height = (v) => (v > 1 ? 1 - Math.exp(-(v - 1) * 1.4) : 0);
       const slope = span * 0.28;
       const toward = (amount) => ink.map((c, k) => c + (paper[k] - c) * amount);
@@ -706,13 +718,49 @@ function symbiote(canvas, mark) {
           const sy = -(height(field[at + nx]) - height(field[at - nx])) * slope;
           const sl = Math.hypot(sx, sy, 1);
           const facing = Math.max(0, (sx * wx + sy * wy + wz) / (sl * hl));
-          const gloss = facing ** 70 * 0.95 + facing ** 14 * 0.1;
-          const tone = gloss > 0.45 ? glint : gloss > 0.12 ? mid : ink;
+          const edge =
+            field[at + 1] <= 1 || field[at - 1] <= 1 || field[at + nx] <= 1 || field[at - nx] <= 1;
+          const rim =
+            !edge &&
+            (field[at + 2] <= 1 ||
+              field[at - 2] <= 1 ||
+              field[at + 2 * nx] <= 1 ||
+              field[at - 2 * nx] <= 1);
+          const face = (sx * lightX + sy * lightY) / ((Math.hypot(sx, sy) || 1) * lightReach);
+          let tone = ink;
+          if (rim && face > 0.4) tone = glint;
+          else if (rim && face > 0.05) tone = mid;
+          else if (facing ** 70 > 0.5) tone = glint;
           const p = (x + y * nx) * 4;
           pixels[p] = tone[0];
           pixels[p + 1] = tone[1];
           pixels[p + 2] = tone[2];
           pixels[p + 3] = 255;
+        }
+      }
+      for (let i = film.length - 1; i >= 0; i--) {
+        const spot = film[i];
+        const age = (time - spot.born) / FILM_LIFE;
+        if (age > 1) {
+          film.splice(i, 1);
+          continue;
+        }
+        const cx = ox + spot.x * span;
+        const cy = oy + spot.y * span;
+        const radius = spot.r * span;
+        const alpha = FILM_ALPHA * (1 - age) ** 1.5;
+        for (let y = Math.max(0, Math.floor(cy - radius)); y < Math.min(ny, cy + radius); y++) {
+          for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(nx, cx + radius); x++) {
+            const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / radius;
+            if (d >= 1) continue;
+            const a = alpha * (d < 0.8 ? 1 : (1 - d) * 5);
+            const p = (x + y * nx) * 4;
+            if (pixels[p + 3] === 255 || a <= pixels[p + 3]) continue;
+            pixels[p] = ink[0];
+            pixels[p + 1] = ink[1];
+            pixels[p + 2] = ink[2];
+            pixels[p + 3] = a;
+          }
         }
       }
       gridCtx.putImageData(image, 0, 0);
